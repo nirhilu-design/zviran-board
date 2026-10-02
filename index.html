@@ -120,7 +120,8 @@ tbody tr:hover td.pc{background:transparent}
 .del:hover{color:var(--danger);background:var(--danger-soft)}
 .del.arm{color:#fff;background:var(--danger);width:auto;padding:0 8px;font-size:12px}
 .addrow td{height:42px;text-align:start}
-.add-in{width:100%;border:0;background:transparent;padding:8px 14px;color:var(--muted)}
+.add-in{width:100%;border:0;background:transparent;padding:8px 14px;color:var(--accent);font-weight:500}
+.add-in::placeholder{color:var(--accent);opacity:.85}
 .add-in:focus{outline:none;color:var(--ink)}
 .cards{display:none}
 
@@ -321,6 +322,11 @@ function addTask(title,extra={}){
   title=title.trim();if(!title)return;
   write(()=>S.db.collection('tasks').add({num:nextNum(),domain:'',title,spec:'',dev:'ספק',priority:'mid',weight:2,status:'ours',due:'',notes:'',created:Date.now(),...extra,...stamp()}),'הבקרה נוספה');
 }
+async function newTask(){
+  const ref=S.db.collection('tasks').doc();
+  const ok=await write(()=>ref.set({num:nextNum(),domain:S.fDomain||'',title:'',spec:S.fOwner||'',dev:'ספק',priority:'mid',weight:2,status:'ours',due:'',notes:'',created:Date.now(),...stamp()}));
+  if(ok){S.newTaskId=ref.id;S.drawer={kind:'task',id:ref.id,fresh:true};renderDrawer()}
+}
 function nextCode(list,prefix){const n=list.reduce((m,x)=>Math.max(m,parseInt(String(x.code||'').replace(/\D/g,''))||0),0)+1;return prefix+String(n).padStart(3,'0')}
 async function addIssue(taskId=''){
   const ref=S.db.collection('issues').doc();
@@ -334,7 +340,15 @@ async function addChange(){
 }
 
 /* ---------- render scheduling ---------- */
+// Never swap the DOM under a press in progress, or the click that follows lands on a removed element.
+let PTR=false;
+document.addEventListener('pointerdown',()=>{PTR=true},true);
+['pointerup','pointercancel'].forEach(ev=>document.addEventListener(ev,()=>{PTR=false;setTimeout(()=>{
+  if(S.pending){S.pending=false;schedule()}
+  if(S.drawerPending){S.drawerPending=false;renderDrawer()}
+},0)},true));
 function schedule(){
+  if(PTR){S.pending=true;return}
   const a=document.activeElement;
   if(a&&a.matches&&a.matches('[data-live]')&&app.contains(a)){S.pending=true;return}
   render();
@@ -382,6 +396,7 @@ function toolbar(){
     ${(S.q||S.fDomain||S.fOwner||S.fSched)?`<button class="btn ghost" data-act="clear">ניקוי סינון</button>`:''}
     <span class="spacer"></span>
     ${S.dl?`<button class="btn" data-act="export">ייצוא לאקסל</button>`:''}
+    ${ro?'':`<button class="btn primary" data-act="new-task">+ בקרה חדשה</button>`}
   </div>`;
 }
 
@@ -584,9 +599,9 @@ function renderDrawer(){
   const d=S.drawer; if(!d){layer.innerHTML='';return}
   const list={task:S.tasks,issue:S.issues,change:S.changes}[d.kind], rec=list.find(x=>x.id===d.id);
   if(!rec){if(!d.fresh){S.drawer=null;layer.innerHTML=''}return}
-  if(layer.querySelector('.drawer')&&layer.contains(document.activeElement)&&document.activeElement.matches('input,textarea,select'))return;
+  if(layer.querySelector('.drawer')&&(PTR||(layer.contains(document.activeElement)&&document.activeElement.matches('input,textarea,select')))){S.drawerPending=true;return}
   const ro=!S.canWrite, dis=ro?'disabled':'';
-  const title={task:'פרטי בקרה',issue:'סוגיה',change:'בקשת שינוי'}[d.kind];
+  const title=d.kind==='task'&&d.id===S.newTaskId?'בקרה חדשה':{task:'פרטי בקרה',issue:'סוגיה',change:'בקשת שינוי'}[d.kind];
   const code=d.kind==='task'?`#${rec.num??''}`:rec.code;
   let body=`<div class="fgrid">${FIELDS[d.kind].map(f=>fieldHTML(f,rec,dis)).join('')}</div>`;
   if(d.kind==='task'){
@@ -607,7 +622,11 @@ function renderDrawer(){
   </aside>`;
   if(d.fresh){d.fresh=false;const f=layer.querySelector('[data-df]');f&&f.focus()}
 }
-function closeDrawer(){S.drawer=null;layer.innerHTML=''}
+function closeDrawer(){
+  const d=S.drawer, titleVal=(layer.querySelector('#f-title')?.value||'').trim();
+  S.drawer=null;layer.innerHTML='';
+  if(d&&d.kind==='task'&&d.id===S.newTaskId){S.newTaskId=null;if(!titleVal)write(()=>S.db.doc('tasks/'+d.id).delete());else toast('הבקרה נוספה')}
+}
 layer.addEventListener('click',e=>{
   if(e.target.closest('[data-close]')){closeDrawer();return}
   const o=e.target.closest('[data-open]'); if(o){const [kind,id]=o.dataset.open.split(':');S.drawer={kind,id};renderDrawer();return}
@@ -624,7 +643,7 @@ layer.addEventListener('change',e=>{
   if(el.dataset.df==='weight'||el.dataset.df==='num')v=Number(v)||0;
   upd(COL[S.drawer.kind],S.drawer.id,{[el.dataset.df]:v});
 });
-layer.addEventListener('focusout',()=>setTimeout(()=>{if(S.drawer&&!layer.contains(document.activeElement))renderDrawer()},0));
+layer.addEventListener('focusout',()=>setTimeout(()=>{if(S.drawer&&S.drawerPending&&!PTR&&!layer.contains(document.activeElement)){S.drawerPending=false;renderDrawer()}},0));
 
 function resolveNames(ids){ids.forEach(id=>{S.names[id]=String(id||'').split('@')[0]})}
 
@@ -676,6 +695,7 @@ app.addEventListener('click',e=>{
   if(act){const a=act.dataset.act;
     if(a==='clear'){S.q='';S.fDomain='';S.fOwner='';S.fSched='';render()}
     if(a==='new-issue')addIssue();
+    if(a==='new-task')newTask();
     if(a==='new-change')addChange();
     if(a==='export')exportXlsx(act);
     if(a==='logout')signOut();
