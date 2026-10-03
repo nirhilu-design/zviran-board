@@ -1,0 +1,1090 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>לוח פרויקט צבירן</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: app shell — title + tabs, shared filter row, then one working surface per tab (dashboard / plan table / kanban / issues / change log), side drawer for details */
+:root{
+  --bg:#f2f4f3; --surface:#ffffff; --surface-2:#f6f8f7; --ink:#17201e; --muted:#5c6866; --faint:#8b9693; --line:#dfe5e3;
+  --accent:#0e7c6b; --accent-ink:#ffffff; --accent-soft:#e0f1ed;
+  --danger:#c23040; --danger-soft:#fbe9eb; --warn:#a76300; --warn-soft:#fdf1df; --ok:#1f8a5b;
+  --st-ours:#c98316; --st-vendor:#3a70cf; --st-qa:#a3367a; --st-done:#2e9e6e; --pill-ink:#ffffff;
+  --pr-high:#c23040; --pr-mid:#71817d; --pr-low:#aab4b1;
+  --shadow:0 12px 32px rgba(20,40,35,.16);
+  --font:"Rubik","Assistant","Segoe UI",Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#101614; --surface:#18211e; --surface-2:#1d2724; --ink:#e6eeeb; --muted:#97a6a2; --faint:#6f7f7b; --line:#2a3632;
+  --accent:#3cc2a8; --accent-ink:#0b1a17; --accent-soft:#163a33;
+  --danger:#ff6b78; --danger-soft:#3a1d22; --warn:#f0b04e; --warn-soft:#3a2d17; --ok:#4fd19a;
+  --st-ours:#bf7f22; --st-vendor:#5a8ae0; --st-qa:#b9579a; --st-done:#34a372; --pill-ink:#0d1311;
+  --pr-high:#ff6b78; --pr-mid:#7f908c; --pr-low:#4c5a56;
+  --shadow:0 12px 32px rgba(0,0,0,.55); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#101614; --surface:#18211e; --surface-2:#1d2724; --ink:#e6eeeb; --muted:#97a6a2; --faint:#6f7f7b; --line:#2a3632;
+  --accent:#3cc2a8; --accent-ink:#0b1a17; --accent-soft:#163a33;
+  --danger:#ff6b78; --danger-soft:#3a1d22; --warn:#f0b04e; --warn-soft:#3a2d17; --ok:#4fd19a;
+  --st-ours:#bf7f22; --st-vendor:#5a8ae0; --st-qa:#b9579a; --st-done:#34a372; --pill-ink:#0d1311;
+  --pr-high:#ff6b78; --pr-mid:#7f908c; --pr-low:#4c5a56;
+  --shadow:0 12px 32px rgba(0,0,0,.55); color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;direction:rtl}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:16px;padding-block:18px 64px;display:flex;flex-direction:column;gap:16px}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+/* header + tabs */
+.head{display:flex;flex-direction:column;gap:2px}
+.title-in{font-size:24px;font-weight:700;border:1px solid transparent;background:transparent;border-radius:8px;padding:2px 6px;margin-inline-start:-6px;width:100%;max-width:640px;min-width:0}
+.title-in:hover:not(:disabled){border-color:var(--line)}
+.title-in:focus{border-color:var(--accent);outline:none;background:var(--surface)}
+.title-in:disabled{color:var(--ink)}
+.sub{color:var(--muted);font-size:13px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.tabs button{border:0;background:transparent;padding:10px 14px;font-weight:500;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px;white-space:nowrap;display:flex;gap:6px;align-items:center}
+.tabs button:hover{color:var(--ink)}
+.tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.tabs .badge{font-size:11px;background:var(--surface-2);border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:0 7px;font-weight:500}
+
+/* toolbar */
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.search{flex:1 1 220px;min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px}
+.sel{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;max-width:100%}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--ink);background:var(--surface)}
+.spacer{flex:1}
+.banner{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:12px 14px;color:var(--muted)}
+
+/* pills & chips */
+.pill{display:flex;align-items:center;justify-content:center;width:100%;height:100%;min-height:44px;border:0;font-weight:500;font-size:13px;color:var(--pill-ink)}
+.pill:disabled{cursor:default}
+.s-ours{background:var(--st-ours)} .s-vendor{background:var(--st-vendor)} .s-qa{background:var(--st-qa)} .s-done{background:var(--st-done)}
+.p-high{background:var(--pr-high);color:var(--pill-ink)} .p-mid{background:var(--pr-mid);color:var(--pill-ink)} .p-low{background:var(--pr-low);color:var(--ink)}
+.chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:500;white-space:nowrap;line-height:1.5}
+.chip.solid{color:var(--pill-ink)}
+.sc-late{background:var(--danger-soft);color:var(--danger)} .sc-soon{background:var(--warn-soft);color:var(--warn)}
+.sc-plan{background:var(--accent-soft);color:var(--accent)} .sc-none{background:var(--surface-2);color:var(--faint)} .sc-done{background:var(--accent-soft);color:var(--ok)}
+.dom{font-size:12px;color:var(--gc);font-weight:600}
+
+/* plan table */
+.group{display:flex;flex-direction:column}
+.ghead{display:flex;align-items:center;gap:8px;padding-block:4px 6px}
+.gtoggle{border:0;background:transparent;width:28px;height:28px;border-radius:6px;color:var(--gc);font-size:11px;transition:transform .15s}
+.gtoggle[aria-expanded="false"]{transform:rotate(90deg)}
+.gname{font-size:16px;font-weight:600;color:var(--gc)}
+.gmeta{color:var(--muted);font-size:12px}
+.gbar{width:80px;height:6px;border-radius:999px;background:var(--line);overflow:hidden}
+.gbar span{display:block;height:100%;background:var(--gc);border-radius:999px}
+.tablebox{overflow-x:auto;border-radius:10px;background:var(--surface);border:1px solid var(--line);border-inline-start:5px solid var(--gc)}
+table{width:100%;border-collapse:collapse}
+.plan table{min-width:1200px}
+th{font-size:12px;font-weight:500;color:var(--muted);text-align:center;padding:8px 6px;border-bottom:1px solid var(--line);background:var(--surface-2);white-space:nowrap}
+th.start,td.start{text-align:start}
+td{border-bottom:1px solid var(--line);padding:0;height:46px;text-align:center;vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+td + td{border-inline-start:1px solid var(--line)}
+tbody tr:hover td{background:var(--surface-2)}
+tbody tr:hover td.pc{background:transparent}
+.idx{color:var(--faint);font-size:12px;width:40px}
+.cell-in{width:100%;border:1px solid transparent;background:transparent;padding:6px 8px;border-radius:6px;text-align:inherit;min-width:0}
+.cell-in:hover:not(:disabled){border-color:var(--line)}
+.cell-in:focus{border-color:var(--accent);outline:none;background:var(--surface)}
+.cell-in:disabled{color:var(--ink)}
+.trow{display:flex;align-items:center;gap:2px;padding-inline:4px}
+.open{border:0;background:transparent;color:var(--muted);padding:4px 8px;border-radius:6px;font-size:12px;white-space:nowrap;display:flex;align-items:center;gap:4px}
+.open:hover{background:var(--accent-soft);color:var(--accent)}
+.open .n{display:inline-flex;min-width:18px;height:18px;align-items:center;justify-content:center;border-radius:999px;background:var(--danger-soft);color:var(--danger);font-size:11px;font-weight:600;padding:0 5px}
+.note-dot{width:7px;height:7px;border-radius:50%;background:var(--warn);display:inline-block}
+.prog{display:flex;align-items:center;gap:8px;padding-inline:10px}
+.prog .track{flex:1;height:6px;border-radius:999px;background:var(--line);overflow:hidden;min-width:40px}
+.prog .track span{display:block;height:100%;border-radius:999px}
+.prog b{font-weight:500;font-size:12px;width:32px;text-align:end}
+.due{display:flex;flex-direction:column;align-items:center;gap:2px;padding-block:4px}
+.date-in{border:1px solid transparent;background:transparent;padding:2px 4px;border-radius:6px;max-width:130px}
+.date-in:hover:not(:disabled){border-color:var(--line)}
+.wsel{border:1px solid transparent;background:transparent;padding:4px;border-radius:6px}
+.wsel:hover:not(:disabled){border-color:var(--line)}
+.del{border:0;background:transparent;color:var(--faint);width:34px;height:34px;border-radius:6px}
+.del:hover{color:var(--danger);background:var(--danger-soft)}
+.del.arm{color:#fff;background:var(--danger);width:auto;padding:0 8px;font-size:12px}
+.owner{display:flex;align-items:center;gap:0;padding-inline:2px}
+.owner .cell-in{flex:1;text-align:center}
+.ico{border:0;background:transparent;color:var(--faint);width:28px;height:28px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;flex:none;padding:0}
+.ico svg{width:16px;height:16px}
+.ico:hover,.ico:focus-visible{background:var(--accent-soft);color:var(--accent)}
+.menu.tmenu{min-width:270px;max-width:calc(100vw - 16px);padding:12px;gap:8px;color:var(--ink)}
+.tmenu h4{margin:0;font-size:13px;font-weight:600}
+.tmenu .hint{font-size:12px;color:var(--muted);line-height:1.45}
+.tmenu .people{display:flex;flex-direction:column;gap:4px;max-height:220px;overflow-y:auto}
+.menu .tmenu-p,.menu .tmenu-b{color:var(--ink)}
+.tmenu .tmenu-p{display:flex;justify-content:space-between;align-items:center;gap:10px;background:transparent;border:1px solid var(--line);text-align:start;font-weight:500}
+.tmenu .tmenu-p small{color:var(--muted);font-weight:400;font-size:11px;direction:ltr}
+.tmenu .tmenu-p:hover{border-color:var(--faint)}
+.tmenu .tmenu-p[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.tmenu .tmenu-p.cur{opacity:.5;cursor:default}
+.tmenu input{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--surface-2);width:100%}
+.tmenu .acts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.menu .tmenu-b{border:1px solid var(--line);background:var(--surface)}
+.menu .tmenu-b.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.menu .tmenu-b:disabled{opacity:.5;cursor:default}
+a.tmenu-b{display:inline-flex;align-items:center;gap:6px;text-decoration:none;border-radius:6px;padding:8px 12px;font-weight:500;white-space:nowrap}
+.tmenu-b svg{width:16px;height:16px;flex:none}
+.tmenu .done{display:flex;align-items:center;gap:8px;color:var(--ok);font-weight:600}
+.btn svg{width:15px;height:15px;vertical-align:-3px}
+a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:var(--ink)}
+.hist{display:flex;flex-direction:column;gap:6px}
+.hist .h{display:flex;gap:8px;align-items:flex-start;font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2)}
+.hist .h .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.hist .h small{color:var(--muted);font-size:12px}
+.ownerline{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.adm{display:flex;flex-direction:column;gap:16px}
+.adm .panel{gap:14px}
+.adm-add{display:grid;grid-template-columns:2fr 1.3fr auto auto;gap:8px;align-items:end}
+.adm-add .field input{background:var(--surface)}
+.adm-add label.chk{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--ink);padding-bottom:10px;white-space:nowrap}
+.adm table{min-width:640px}
+.adm td{padding:6px 10px;height:52px;text-align:start;vertical-align:middle}
+.adm .nm{display:flex;align-items:center;gap:6px}.adm .nm .cell-in{flex:1}
+.adm td.c{text-align:center}
+.adm .em{direction:ltr;text-align:end;color:var(--muted);font-size:13px}
+.adm .me{white-space:nowrap;font-size:11px;background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:1px 8px;margin-inline-start:6px}
+.adm .acts{display:flex;gap:4px;justify-content:flex-end;align-items:center}
+.adm .note{color:var(--muted);font-size:13px;line-height:1.55;margin:0}
+.adm .linkbox{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.adm .linkbox code{direction:ltr;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;user-select:all;overflow-wrap:anywhere}
+.switch{position:relative;display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:13px}
+.switch input{width:18px;height:18px;accent-color:var(--accent);cursor:pointer}
+@media (max-width:720px){.adm-add{grid-template-columns:1fr}}
+.addrow td{height:42px;text-align:start}
+.add-in{width:100%;border:0;background:transparent;padding:8px 14px;color:var(--accent);font-weight:500}
+.add-in::placeholder{color:var(--accent);opacity:.85}
+.add-in:focus{outline:none;color:var(--ink)}
+.cards{display:none}
+
+/* kanban */
+.kanban{display:grid;grid-template-columns:repeat(4,minmax(230px,1fr));gap:12px;overflow-x:auto;padding-bottom:6px;align-items:start}
+.col{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;min-width:0}
+.col h3{margin:0;font-size:14px;font-weight:600;padding:10px 12px;border-radius:11px 11px 0 0;color:var(--pill-ink);display:flex;justify-content:space-between;align-items:center}
+.col h3 small{font-weight:500;opacity:.9}
+.col .list{display:flex;flex-direction:column;gap:8px;padding:10px;min-height:80px}
+.col.drop{outline:2px dashed var(--accent);outline-offset:-4px}
+.kcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;text-align:start;cursor:grab;position:relative}
+.kcard:hover{border-color:var(--faint)}
+.kcard.dragging{opacity:.4}
+.kcard .top{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.kcard .ct{font-weight:500;line-height:1.4}
+.kcard .meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
+.kcard .hash{color:var(--faint);font-size:11px}
+.kcard .note{font-size:12px;color:var(--warn);background:var(--warn-soft);border-radius:6px;padding:4px 8px;line-height:1.4}
+.kadd{border:1px dashed var(--line);background:transparent;border-radius:8px;padding:8px 10px;width:100%}
+.kadd:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+
+/* dashboard */
+.dash{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel h2{margin:0;font-size:14px;font-weight:600}
+.panel h2 small{font-weight:400;color:var(--muted);margin-inline-start:6px}
+.span-12{grid-column:span 12} .span-7{grid-column:span 7} .span-5{grid-column:span 5} .span-6{grid-column:span 6} .span-4{grid-column:span 4} .span-8{grid-column:span 8}
+.hero{display:flex;flex-direction:column;gap:10px}
+.hero .big{font-size:52px;font-weight:700;line-height:1;letter-spacing:-.02em}
+.hero .big small{font-size:22px;font-weight:600;color:var(--muted)}
+.hero .cap{color:var(--muted);font-size:13px}
+.hbar{height:12px;border-radius:999px;background:var(--line);overflow:hidden}
+.hbar span{display:block;height:100%;background:var(--accent);border-radius:999px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.tile{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;background:var(--surface);text-align:start}
+button.tile:hover{border-color:var(--faint)}
+.tile .k{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.tile .v{font-size:26px;font-weight:600}
+.tile.alert .v{color:var(--danger)} .tile.warn .v{color:var(--warn)}
+.sw{width:10px;height:10px;border-radius:3px;display:inline-block;flex:none}
+.stack{display:flex;height:28px;border-radius:6px;overflow:hidden;gap:2px;background:var(--surface)}
+.stack span{display:flex;align-items:center;justify-content:center;color:var(--pill-ink);font-size:12px;font-weight:600;min-width:0;overflow:hidden;white-space:nowrap}
+.stack span:first-child{border-start-start-radius:6px;border-end-start-radius:6px}
+.stack span:last-child{border-start-end-radius:6px;border-end-end-radius:6px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.hrows{display:flex;flex-direction:column;gap:8px}
+.hrow{display:grid;grid-template-columns:minmax(80px,120px) 1fr 44px;gap:10px;align-items:center;font-size:13px}
+.hrow .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hrow .lbl small{color:var(--faint);margin-inline-start:4px}
+.hrow .track{height:10px;background:var(--surface-2);border-radius:999px;overflow:hidden;display:flex;gap:2px}
+.hrow .track span{height:100%}
+.hrow .track span:last-child{border-start-end-radius:4px;border-end-end-radius:4px}
+.hrow .val{text-align:end;color:var(--muted);font-size:12px}
+.ilist{display:flex;flex-direction:column}
+.irow{display:flex;gap:10px;align-items:center;padding:9px 4px;border-bottom:1px solid var(--line);background:transparent;border-inline:0;border-top:0;text-align:start;width:100%}
+.irow:last-child{border-bottom:0}
+.irow:hover{background:var(--surface-2)}
+.irow .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.irow .t span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.irow .t small{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.none{color:var(--faint);font-size:13px;padding:6px 2px}
+
+/* issues & changes */
+.list table{min-width:900px}
+.list td{text-align:start;padding-inline:10px;height:auto;padding-block:10px;vertical-align:top}
+.list td.c{text-align:center}
+.list tbody tr{cursor:pointer}
+.list .code{color:var(--faint);font-size:12px;white-space:nowrap}
+.list .subj{font-weight:500}
+.list .desc{color:var(--muted);font-size:12px;margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line}
+.list tr.closed td{opacity:.55}
+.sev-critical{background:var(--danger);color:#fff} .sev-high{background:var(--danger-soft);color:var(--danger)} .sev-mid{background:var(--warn-soft);color:var(--warn)} .sev-low{background:var(--surface-2);color:var(--muted)}
+.ist-open{background:var(--danger-soft);color:var(--danger)} .ist-handling{background:var(--accent-soft);color:var(--accent)} .ist-waiting{background:var(--warn-soft);color:var(--warn)} .ist-closed{background:var(--surface-2);color:var(--faint)}
+
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:32px 20px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
+.empty h2{margin:0;font-size:17px}
+.empty p{margin:0;color:var(--muted);max-width:52ch;line-height:1.55}
+
+/* menu, drawer, toast, tooltip */
+.menu{position:fixed;z-index:45;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:6px;display:flex;flex-direction:column;gap:4px;min-width:150px}
+.menu button{border:0;border-radius:6px;padding:8px 12px;font-weight:500;color:var(--pill-ink)}
+.menu button[aria-current="true"]{box-shadow:inset 0 0 0 2px var(--ink)}
+.scrim{position:fixed;inset:0;background:rgba(10,20,18,.38);z-index:40}
+.drawer{position:fixed;top:0;bottom:0;inset-inline-end:0;width:min(480px,100%);background:var(--surface);z-index:41;box-shadow:var(--shadow);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.dh{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.dh .code{color:var(--faint);font-size:12px}
+.dh .x{margin-inline-start:auto;border:0;background:transparent;font-size:18px;color:var(--muted);width:36px;height:36px;border-radius:8px}
+.dh .x:hover{background:var(--surface-2)}
+.dbody{padding:16px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;flex:1}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field.wide{grid-column:1 / -1}
+.field label{font-size:12px;color:var(--muted)}
+.field input,.field select,.field textarea{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:9px 10px;width:100%;min-width:0}
+.field textarea{min-height:110px;resize:vertical;line-height:1.55}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+.field .ro{padding:9px 2px;color:var(--muted)}
+.dsec{border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:8px}
+.dsec h3{margin:0;font-size:13px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.dfoot{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.toast{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;z-index:60;font-size:13px;max-width:calc(100% - 32px)}
+.tip{position:fixed;z-index:70;background:var(--ink);color:var(--bg);font-size:12px;padding:6px 9px;border-radius:6px;pointer-events:none;max-width:260px;line-height:1.45}
+
+@media (max-width:900px){
+  .span-7,.span-5,.span-6,.span-4,.span-8{grid-column:span 12}
+}
+@media (max-width:720px){
+  .plan .tablebox{display:none}
+  .plan .cards{display:flex;flex-direction:column;gap:8px}
+  .card{background:var(--surface);border:1px solid var(--line);border-inline-start:5px solid var(--gc);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;text-align:start;width:100%}
+  .card .ct{font-weight:500;font-size:15px;line-height:1.4}
+  .card .meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
+  .add-card input{width:100%;border:1px dashed var(--line);background:var(--surface);border-radius:10px;padding:10px 12px}
+  .tiles{grid-template-columns:repeat(2,1fr)}
+  .title-in{font-size:18px}
+  .fgrid{grid-template-columns:1fr}
+  .hero .big{font-size:44px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.head{position:relative}
+.who{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);align-self:flex-end;margin-bottom:-4px}
+.who .btn{padding:4px 8px;font-size:12px}
+.login{max-width:520px;margin:40px auto 0}
+.login .search{flex:none}
+</style>
+<style>html{color-scheme:light}body{margin:0}[hidden]{display:none!important}</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="banner">טוען את הלוח…</div></div>
+<div id="layer"></div>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script>
+
+/* ---------- vocab (mirrors the Excel lists) ---------- */
+const ST=[{k:'ours',l:'ממתין לנו',p:10},{k:'vendor',l:'ספק פיתוח',p:50},{k:'qa',l:'בבדיקות',p:85},{k:'done',l:'הושלם',p:100}];
+const PR=[{k:'high',l:'גבוהה'},{k:'mid',l:'בינונית'},{k:'low',l:'נמוכה'}];
+const SEV=[{k:'',l:'—'},{k:'critical',l:'קריטי'},{k:'high',l:'גבוה'},{k:'mid',l:'בינוני'},{k:'low',l:'נמוך'}];
+const IST=[{k:'open',l:'פתוח'},{k:'handling',l:'בטיפול'},{k:'waiting',l:'ממתין'},{k:'closed',l:'נסגר'}];
+const ITYPE=['','החלטה','חסם','שאלה פתוחה','תקלה','אפיון'];
+const CR_APPROVAL=['ממתין לאישור','אושר','נדחה'], CR_STATUS=['פתוח','בביצוע','נסגר'];
+const DEFAULT_OWNERS=['אנחנו','ספק','משותף','B2E'];
+const GC=['#2f6fd1','#0e8c78','#c46f16','#8a4fc9','#c23a63','#4f6a8f','#3c8f3a','#a35d2a'];
+const SL=Object.fromEntries(ST.map(s=>[s.k,s.l])), SP=Object.fromEntries(ST.map(s=>[s.k,s.p])), PL=Object.fromEntries(PR.map(p=>[p.k,p.l]));
+const SEVL=Object.fromEntries(SEV.map(s=>[s.k,s.l])), ISTL=Object.fromEntries(IST.map(s=>[s.k,s.l]));
+const SCHED={late:'באיחור',soon:'קרוב ליעד',plan:'בתכנון',none:'ללא יעד',done:'הושלם'};
+const TABS=[{k:'dash',l:'דשבורד'},{k:'plan',l:'תוכנית עבודה'},{k:'kanban',l:'קנבן'},{k:'issues',l:'סוגיות והחלטות'},{k:'changes',l:'יומן שינויים'}];
+const tabs=()=>S.isAdmin?[...TABS,{k:'admin',l:'ניהול משתמשים'}]:TABS;
+
+const ICON_MAIL='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6 8.5-6"/></svg>';
+const ICON_MOVE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7h11l-3-3M16 17H5l3 3"/></svg>';
+
+/* ---------- state ---------- */
+const S={db:null,user:null,uid:null,dl:null,state:'loading',canWrite:true,wrote:false,
+  tasks:[],issues:[],changes:[],board:{},team:[],deepTask:null,loaded:{t:false,i:false,c:false},
+  tab:'plan',groupBy:'none',q:'',fDomain:'',fOwner:'',fSched:'',showClosed:false,collapsed:{},drawer:null,pending:false,names:{}};
+try{const v=JSON.parse(localStorage.getItem('zv-board')||'{}');Object.assign(S,{tab:v.tab||'plan',groupBy:v.groupBy||'none',collapsed:v.collapsed||{}})}catch(e){}
+const h0=(location.hash||'').slice(1);if(TABS.some(t=>t.k===h0)||h0==='admin')S.tab=h0;if(/^task-[\w-]+$/.test(h0))S.deepTask=h0.slice(5);
+try{if(S.deepTask)localStorage.setItem('zv-deep',S.deepTask);else S.deepTask=localStorage.getItem('zv-deep')}catch(e){}
+const saveUI=()=>{try{localStorage.setItem('zv-board',JSON.stringify({tab:S.tab,groupBy:S.groupBy,collapsed:S.collapsed}))}catch(e){}};
+
+const app=document.getElementById('app'), layer=document.getElementById('layer');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const todayStr=()=>new Date().toLocaleDateString('en-CA');
+const dayDiff=(a,b)=>Math.round((Date.parse(a)-Date.parse(b))/864e5);
+const fmtDate=d=>{if(!d)return '';const [y,m,dd]=d.split('-');return `${dd}/${m}/${y.slice(2)}`};
+const pct=t=>SP[t.status]??0;
+function sched(t){
+  if(!t.due)return 'none'; if(t.status==='done')return 'done';
+  const d=dayDiff(t.due,todayStr()); if(d<0)return 'late'; if(d<=7)return 'soon'; return 'plan';
+}
+function schedChip(t){
+  const s=sched(t);let txt=SCHED[s];
+  if(t.due&&s!=='done'){const d=dayDiff(t.due,todayStr());txt=d<0?`באיחור ${-d} ימים`:d===0?'היום':`בעוד ${d} ימים`}
+  return `<span class="chip sc-${s}">${txt}</span>`;
+}
+function weighted(list){let w=0,s=0;list.forEach(t=>{const x=Number(t.weight)||0;w+=x;s+=x*pct(t)});return w?s/w:0}
+const domains=()=>{const seen=[];[...S.tasks].sort((a,b)=>(a.num||0)-(b.num||0)).forEach(t=>{const d=(t.domain||'').trim();if(d&&!seen.includes(d))seen.push(d)});return seen};
+const domColor=d=>{const i=domains().indexOf(d);return i<0?'var(--faint)':GC[i%GC.length]};
+const ownersOf=k=>[...new Set(S.tasks.map(t=>(t[k]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'he'));
+const allOwners=()=>[...new Set([...S.team.map(personName),...ownersOf('spec'),...ownersOf('dev'),...DEFAULT_OWNERS,...S.issues.map(i=>(i.owner||'').trim()).filter(Boolean)])];
+const openIssues=()=>S.issues.filter(i=>i.status!=='closed');
+const issuesFor=id=>S.issues.filter(i=>i.task===id);
+const taskById=id=>S.tasks.find(t=>t.id===id);
+function toast(msg){document.querySelector('.toast')?.remove();const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2800)}
+
+/* ---------- team & transfer ---------- */
+const personName=m=>m?(m.name||'').trim()||m.email.split('@')[0]:'';
+const meName=()=>personName(S.team.find(m=>m.email===S.uid))||S.uid.split('@')[0];
+const teamByEmail=e=>S.team.find(m=>m.email===String(e||'').toLowerCase());
+const teamByName=n=>{n=String(n||'').trim();return n?S.team.find(m=>personName(m)===n||m.email===n.toLowerCase()):null};
+function ownerOf(t){const m=teamByEmail(t.specEmail)||teamByName(t.spec);return m||null}
+const boardUrl=()=>location.origin+location.pathname;
+function mailtoFor(t,kind,note){
+  const m=ownerOf(t); if(!m)return '';
+  const to=personName(m), link=boardUrl()+'#task-'+t.id;
+  const lines=[`שלום ${to},`,'',
+    kind==='transfer'?`${meName()} העביר/ה אליך את הבקרה:`:`תזכורת לגבי בקרה שבאחריותך:`,
+    `#${t.num} ${t.title}`,
+    `תחום: ${t.domain||'—'}`,`סטטוס: ${SL[t.status]||'—'}`,`תאריך יעד: ${t.due?fmtDate(t.due):'לא נקבע'}`];
+  if(note)lines.push(`הערה: ${note}`);
+  if(t.notes)lines.push(`חסם / הערה בבקרה: ${t.notes}`);
+  lines.push('','לפתיחת הבקרה בלוח:',link);
+  const subj=(kind==='transfer'?'הועברה אליך בקרה: ':'תזכורת: ')+`#${t.num} ${t.title}`;
+  return `mailto:${encodeURIComponent(m.email)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(lines.join('\r\n'))}`;
+}
+async function doTransfer(id,email,note){
+  const t=taskById(id), m=teamByEmail(email); if(!t||!m)return false;
+  const entry={at:Date.now(),by:S.uid,from:t.spec||'',to:personName(m),toEmail:m.email,note:note||''};
+  const history=[...(Array.isArray(t.history)?t.history:[]),entry].slice(-50);
+  return upd('tasks',id,{spec:personName(m),specEmail:m.email,history});
+}
+function openTransfer(anchor,id){
+  closeMenu();const t=taskById(id);if(!t)return;
+  const cur=ownerOf(t), m=document.createElement('div');m.className='menu tmenu';m.setAttribute('role','dialog');m.setAttribute('aria-label','העברה לאחראי');
+  let pick=null;
+  const others=S.team.filter(p=>!cur||p.email!==cur.email);
+  const draw=()=>{
+    m.innerHTML=`<h4>העברת "${esc(t.title)}"</h4>
+      <div class="hint">כרגע באחריות: <b>${esc(t.spec)||'אף אחד'}</b></div>
+      ${others.length?`<div class="people">${others.map(p=>`<button type="button" class="tmenu-p" data-email="${esc(p.email)}" aria-pressed="${pick===p.email}">${esc(personName(p))}<small>${esc(p.email)}</small></button>`).join('')}</div>
+      <input id="tr-note" placeholder="הערה למקבל/ת (לא חובה)" maxlength="300">
+      <div class="acts"><button type="button" class="tmenu-b" data-x>ביטול</button><button type="button" class="tmenu-b primary" data-go ${pick?'':'disabled'}>העבר</button></div>`
+      :`<div class="hint">אין עוד משתמשים במערכת להעביר אליהם. מוסיפים משתמש בטבלה allowed_users ב‑Supabase, לפי המדריך.</div><div class="acts"><button type="button" class="tmenu-b" data-x>סגור</button></div>`}`;
+  };
+  draw();
+  m.addEventListener('click',async e=>{
+    e.stopPropagation();
+    if(e.target.closest('[data-x]')){closeMenu();return}
+    const p=e.target.closest('.tmenu-p');
+    if(p){const note=m.querySelector('#tr-note')?.value||'';pick=p.dataset.email;draw();m.querySelector('#tr-note').value=note;return}
+    if(e.target.closest('[data-go]')&&pick){
+      const note=(m.querySelector('#tr-note')?.value||'').trim(), go=m.querySelector('[data-go]');go.disabled=true;go.textContent='מעביר…';
+      const ok=await doTransfer(id,pick,note); if(!ok){closeMenu();return}
+      const fresh={...taskById(id),spec:personName(teamByEmail(pick)),specEmail:pick};
+      const mt=mailtoFor(fresh,'transfer',note), who=personName(teamByEmail(pick));
+      m.innerHTML=`<div class="done">✓ הבקרה הועברה ל${esc(who)}</div>
+        <div class="hint">רוצה לעדכן את ${esc(who)} במייל? ייפתח מייל מוכן בתוכנת הדואר שלך, ותוכל/י לערוך אותו לפני השליחה.</div>
+        <div class="acts"><button type="button" class="tmenu-b" data-x>לא עכשיו</button><a class="tmenu-b primary" href="${esc(mt)}" data-mail>${ICON_MAIL} שלח מייל עדכון</a></div>`;
+      m.querySelector('[data-mail]').focus();
+      return;
+    }
+    if(e.target.closest('[data-mail]'))setTimeout(closeMenu,50);
+  });
+  m.addEventListener('keydown',e=>{
+    if(e.key==='Enter'&&e.target.id==='tr-note'){e.preventDefault();m.querySelector('[data-go]:not(:disabled)')?.click()}
+  });
+  place(m,anchor);
+}
+
+/* ---------- admin: users ---------- */
+async function loadTeam(){
+  const {data,error}=await SB.from('allowed_users').select('*');
+  const rows=error||!data?[{email:S.uid}]:data;
+  S.team=rows.map(r=>({email:String(r.email).toLowerCase(),name:r.name||'',is_admin:!!r.is_admin})).sort((a,b)=>(b.is_admin-a.is_admin)||personName(a).localeCompare(personName(b),'he'));
+  S.isAdmin=!!S.team.find(m=>m.email===S.uid)?.is_admin;
+  S.teamHasAdminCol=!error&&rows.length>0&&('is_admin' in rows[0]);
+}
+const sbErr=e=>{const m=(e&&e.message)||'';
+  if(/לפחות מנהל/.test(m))return 'חייב להישאר לפחות מנהל אחד במערכת.';
+  if(/duplicate|unique|already exists/i.test(m))return 'המייל הזה כבר נמצא ברשימה.';
+  if(/row-level security|permission/i.test(m))return 'אין לך הרשאת ניהול.';
+  return 'הפעולה נכשלה: '+m;};
+function inviteMailto(email,name){
+  const subj='הוזמנת ללוח ניהול הפרויקט';
+  const body=[`שלום ${name||''},`.trim(),'','הוספתי אותך ללוח ניהול הפרויקט של מערכת הבקרות.','',
+    'איך נכנסים:',`1. פותחים את הכתובת: ${boardUrl()}`,`2. מזינים את המייל הזה (${email}) ולוחצים "שלחו לי קישור כניסה".`,'3. לוחצים על הקישור שמגיע במייל, ונכנסים ללוח.','',
+    'צריך לעשות את זה פעם אחת בכל מחשב או טלפון.','',meName()].join('\r\n');
+  return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+}
+function viewAdmin(){
+  const me=S.uid, admins=S.team.filter(m=>m.is_admin).length;
+  let h=`<div class="adm">`;
+  if(!S.teamHasAdminCol)h+=`<div class="banner">כדי לנהל משתמשים צריך להריץ קודם את הקובץ update-1-team.sql ב‑Supabase.</div>`;
+  h+=`<section class="panel"><h2>הוספת משתמש</h2>
+    <form class="adm-add" id="adm-add" novalidate>
+      <div class="field"><label for="adm-email">מייל</label><input id="adm-email" type="email" autocomplete="off" placeholder="name@zviran.co.il" dir="ltr" required></div>
+      <div class="field"><label for="adm-name">שם תצוגה</label><input id="adm-name" placeholder="כמו שמופיע בעמודת האחראי"></div>
+      <label class="chk"><input type="checkbox" id="adm-admin"> מנהל</label>
+      <button class="btn primary" type="submit" id="adm-submit">הוסף משתמש</button>
+    </form>
+    <p class="note">משתמש שנוסף יכול להיכנס מיד: הוא פותח את כתובת הלוח ומזין את המייל שלו. מנהל יכול גם להוסיף ולהסיר משתמשים.</p>
+  </section>
+  <section class="panel"><h2>משתמשים<small class="num">${S.team.length}</small></h2>
+    <div class="tablebox list" style="--gc:var(--accent);border-inline-start-width:1px"><table><thead><tr><th class="start">שם תצוגה</th><th class="start">מייל</th><th>מנהל</th><th class="start">בקרות באחריות</th><th></th></tr></thead><tbody>
+    ${S.team.map(m=>{
+      const isMe=m.email===me, owned=S.tasks.filter(t=>ownerOf(t)?.email===m.email).length, lastAdmin=m.is_admin&&admins<=1;
+      return `<tr>
+        <td><div class="nm"><input class="cell-in" style="text-align:start" data-live data-uname="${esc(m.email)}" value="${esc(m.name)}" placeholder="${esc(m.email.split('@')[0])}" aria-label="שם תצוגה של ${esc(m.email)}">${isMe?'<span class="me">את/ה</span>':''}</div></td>
+        <td class="em">${esc(m.email)}</td>
+        <td class="c"><label class="switch" ${lastAdmin?'data-tip="חייב להישאר לפחות מנהל אחד"':''}><input type="checkbox" data-uadmin="${esc(m.email)}" ${m.is_admin?'checked':''} ${lastAdmin||isMe&&m.is_admin?'disabled':''} aria-label="מנהל"></label></td>
+        <td class="num">${owned||'—'}</td>
+        <td><div class="acts">
+          <a class="ico" href="${esc(inviteMailto(m.email,personName(m)))}" data-tip="שלח מייל הזמנה" aria-label="שלח מייל הזמנה ל${esc(personName(m))}">${ICON_MAIL}</a>
+          ${isMe?'':`<button class="del" data-udel="${esc(m.email)}" aria-label="הסר את ${esc(personName(m))}">✕</button>`}
+        </div></td></tr>`}).join('')}
+    </tbody></table></div>
+    <p class="note">שינוי שם מעדכן גם את עמודת האחראי בבקרות של אותו משתמש. מנהל לא יכול להסיר את עצמו או לבטל לעצמו את הרשאת הניהול.</p>
+  </section>
+  <section class="panel"><h2>כתובת הלוח לשליחה</h2>
+    <div class="linkbox"><code id="board-url">${esc(boardUrl())}</code><button class="btn" data-act="copy-url">העתק</button></div>
+  </section></div>`;
+  return h;
+}
+async function adminAdd(form){
+  const email=form.querySelector('#adm-email').value.trim().toLowerCase(), name=form.querySelector('#adm-name').value.trim(), isA=form.querySelector('#adm-admin').checked;
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){toast('כתובת המייל לא תקינה.');form.querySelector('#adm-email').focus();return}
+  if(S.team.some(m=>m.email===email)){toast('המייל הזה כבר נמצא ברשימה.');return}
+  const btn=form.querySelector('#adm-submit');btn.disabled=true;
+  const {error}=await SB.from('allowed_users').insert({email,name:name||null,is_admin:isA});
+  btn.disabled=false;
+  if(error){toast(sbErr(error));return}
+  await loadTeam();render();
+  const nm=name||email.split('@')[0];
+  const t=document.createElement('div');t.className='toast';t.innerHTML=`${esc(nm)} נוסף/ה. <a href="${esc(inviteMailto(email,nm))}" style="color:inherit;font-weight:600">שלח מייל הזמנה</a>`;
+  document.querySelector('.toast')?.remove();document.body.appendChild(t);setTimeout(()=>t.remove(),8000);
+}
+async function adminRename(email,newName){
+  const m=S.team.find(x=>x.email===email); if(!m)return;
+  const oldName=personName(m);
+  const {error}=await SB.from('allowed_users').update({name:newName||null}).eq('email',email);
+  if(error){toast(sbErr(error));await loadTeam();render();return}
+  const owned=S.tasks.filter(t=>t.specEmail===email||(!t.specEmail&&(t.spec||'').trim()===oldName));
+  await loadTeam();
+  const shown=personName(S.team.find(x=>x.email===email));
+  for(const t of owned)await upd('tasks',t.id,{spec:shown,specEmail:email});
+  toast(owned.length?`השם עודכן, וגם ב‑${owned.length} בקרות`:'השם עודכן');render();
+}
+async function adminSetAdmin(email,val){
+  const {error}=await SB.from('allowed_users').update({is_admin:val}).eq('email',email);
+  if(error)toast(sbErr(error));else toast(val?'הרשאת ניהול נוספה':'הרשאת הניהול הוסרה');
+  await loadTeam();render();
+}
+async function adminRemove(email){
+  const {error}=await SB.from('allowed_users').delete().eq('email',email);
+  if(error){toast(sbErr(error));return}
+  await loadTeam();render();toast('המשתמש הוסר. הגישה שלו נחסמה.');
+}
+
+/* ---------- writes ---------- */
+async function write(fn,okMsg){
+  if(!S.db||!S.canWrite)return false;
+  try{await fn();S.wrote=true;if(okMsg)toast(okMsg);return true}
+  catch(e){
+    if(e&&e.code==='invalid_argument'&&!S.wrote){S.canWrite=false;render();toast('אין לך הרשאת עריכה בלוח הזה')}
+    else if(e&&e.code==='quota_exceeded')toast('הלוח הגיע למגבלת הנפח. מחק רשומות ישנות כדי להוסיף חדשות.');
+    else toast('השמירה נכשלה. בדוק את החיבור ונסה שוב.');
+    return false;
+  }
+}
+const stamp=()=>({updated:Date.now(),...(S.uid?{updatedBy:S.uid}:{})});
+const upd=(col,id,patch)=>write(()=>S.db.doc(col+'/'+id).update({...patch,...stamp()}));
+function nextNum(){return S.tasks.reduce((m,t)=>Math.max(m,Number(t.num)||0),0)+1}
+function addTask(title,extra={}){
+  title=title.trim();if(!title)return;
+  write(()=>S.db.collection('tasks').add({num:nextNum(),domain:'',title,spec:'',dev:'ספק',priority:'mid',weight:2,status:'ours',due:'',notes:'',created:Date.now(),...extra,...stamp()}),'הבקרה נוספה');
+}
+async function newTask(){
+  const ref=S.db.collection('tasks').doc();
+  const ok=await write(()=>ref.set({num:nextNum(),domain:S.fDomain||'',title:'',spec:S.fOwner||'',dev:'ספק',priority:'mid',weight:2,status:'ours',due:'',notes:'',created:Date.now(),...stamp()}));
+  if(ok){S.newTaskId=ref.id;S.drawer={kind:'task',id:ref.id,fresh:true};renderDrawer()}
+}
+function nextCode(list,prefix){const n=list.reduce((m,x)=>Math.max(m,parseInt(String(x.code||'').replace(/\D/g,''))||0),0)+1;return prefix+String(n).padStart(3,'0')}
+async function addIssue(taskId=''){
+  const ref=S.db.collection('issues').doc();
+  const ok=await write(()=>ref.set({code:nextCode(S.issues,'ISS-'),type:'',subject:'',task:taskId,severity:'',description:'',owner:'',opened:todayStr(),due:'',status:'open',resolution:'',created:Date.now(),...stamp()}));
+  if(ok){S.drawer={kind:'issue',id:ref.id,fresh:true};renderDrawer()}
+}
+async function addChange(){
+  const ref=S.db.collection('changes').doc();
+  const ok=await write(()=>ref.set({code:nextCode(S.changes,'CR-'),date:todayStr(),requester:'',task:'',description:'',reason:'',scheduleImpact:'',costImpact:'',approval:'ממתין לאישור',status:'פתוח',notes:'',created:Date.now(),...stamp()}));
+  if(ok){S.drawer={kind:'change',id:ref.id,fresh:true};renderDrawer()}
+}
+
+/* ---------- render scheduling ---------- */
+// Never swap the DOM under a press in progress, or the click that follows lands on a removed element.
+let PTR=false;
+document.addEventListener('pointerdown',()=>{PTR=true},true);
+['pointerup','pointercancel'].forEach(ev=>document.addEventListener(ev,()=>{PTR=false;setTimeout(()=>{
+  if(S.pending){S.pending=false;schedule()}
+  if(S.drawerPending){S.drawerPending=false;renderDrawer()}
+},0)},true));
+function schedule(){
+  if(PTR){S.pending=true;return}
+  const a=document.activeElement;
+  if(a&&a.matches&&a.matches('[data-live]')&&app.contains(a)){S.pending=true;return}
+  render();
+}
+app.addEventListener('focusout',()=>setTimeout(()=>{if(S.pending){S.pending=false;schedule()}},0));
+
+function filteredTasks(){
+  const q=S.q.trim().toLowerCase();
+  return S.tasks.filter(t=>(!q||[t.title,t.notes,t.spec,t.dev,t.domain].some(v=>(v||'').toLowerCase().includes(q)))
+    &&(!S.fDomain||t.domain===S.fDomain)&&(!S.fOwner||(t.spec||'').trim()===S.fOwner)&&(!S.fSched||sched(t)===S.fSched));
+}
+
+/* ---------- main render ---------- */
+function render(){
+  if(S.state!=='ok'){app.innerHTML=gateHTML();return}
+  if(!(S.loaded.t&&S.loaded.i&&S.loaded.c)){app.innerHTML=`<div class="banner">טוען את הלוח…</div>`;return}
+  const ro=!S.canWrite, dis=ro?'disabled':'';
+  const n=S.tasks.length, prog=Math.round(weighted(S.tasks));
+  const oi=openIssues().length, late=S.tasks.filter(t=>sched(t)==='late').length;
+  const badge={plan:n,kanban:null,issues:oi||null,changes:S.changes.length||null,dash:null,admin:S.team.length};
+  if(S.tab==='admin'&&!S.isAdmin)S.tab='plan';
+  let h=`<header class="head">
+    <input class="title-in" id="board-name" data-live value="${esc(S.board.name||'לוח ניהול פרויקט')}" aria-label="שם הלוח" ${dis}>
+    <div class="who"><span>${esc(S.uid||'')}</span><button class="btn ghost" data-act="logout">התנתקות</button></div>
+    <div class="sub num">${esc(S.board.subtitle||'')}${S.board.subtitle?' · ':''}${n} בקרות · ${prog}% התקדמות משוקללת${late?` · <span style="color:var(--danger);font-weight:600">${late} באיחור</span>`:''}</div>
+  </header>
+  <nav class="tabs" role="tablist" aria-label="מסכים">${tabs().map(t=>`<button role="tab" data-tab="${t.k}" aria-selected="${S.tab===t.k}">${t.l}${badge[t.k]!=null?`<span class="badge num">${badge[t.k]}</span>`:''}</button>`).join('')}</nav>
+  ${ro?`<div class="banner">יש לך הרשאת צפייה בלבד. כדי לעדכן, בקש מבעל הלוח לשתף אותך כעורך.</div>`:''}`;
+  if(S.tab==='plan'||S.tab==='kanban')h+=toolbar();
+  h+=({dash:viewDash,plan:viewPlan,kanban:viewKanban,issues:viewIssues,changes:viewChanges,admin:viewAdmin}[S.tab]||viewPlan)();
+  h+=`<datalist id="dl-owners">${allOwners().map(o=>`<option value="${esc(o)}">`).join('')}</datalist><datalist id="dl-domains">${domains().map(o=>`<option value="${esc(o)}">`).join('')}</datalist>`;
+  const qFocus=document.activeElement?.id==='q'?document.activeElement.selectionStart:null;
+  app.innerHTML=h;
+  if(qFocus!=null){const q=document.getElementById('q');if(q){q.focus();q.setSelectionRange(qFocus,qFocus)}}
+  if(S.drawer)renderDrawer();
+}
+
+function toolbar(){
+  const ro=!S.canWrite;
+  return `<div class="tools">
+    <input class="search" id="q" type="search" placeholder="חיפוש בקרה, אחראי או הערה" value="${esc(S.q)}" aria-label="חיפוש">
+    <select class="sel" data-filter="fDomain" aria-label="סינון לפי תחום"><option value="">כל התחומים</option>${domains().map(d=>`<option ${S.fDomain===d?'selected':''}>${esc(d)}</option>`).join('')}</select>
+    <select class="sel" data-filter="fOwner" aria-label="סינון לפי אחריות אפיון"><option value="">כל האחראים</option>${ownersOf('spec').map(o=>`<option ${S.fOwner===o?'selected':''}>${esc(o)}</option>`).join('')}</select>
+    <select class="sel" data-filter="fSched" aria-label="סינון לפי מצב לו״ז"><option value="">כל מצבי הלו״ז</option>${Object.entries(SCHED).map(([k,l])=>`<option value="${k}" ${S.fSched===k?'selected':''}>${l}</option>`).join('')}</select>
+    ${S.tab==='plan'?`<select class="sel" data-filter="groupBy" aria-label="קיבוץ"><option value="domain" ${S.groupBy==='domain'?'selected':''}>קיבוץ לפי תחום</option><option value="status" ${S.groupBy==='status'?'selected':''}>קיבוץ לפי סטטוס</option><option value="spec" ${S.groupBy==='spec'?'selected':''}>קיבוץ לפי אחריות אפיון</option><option value="none" ${S.groupBy==='none'?'selected':''}>ללא קיבוץ</option></select>`:''}
+    ${(S.q||S.fDomain||S.fOwner||S.fSched)?`<button class="btn ghost" data-act="clear">ניקוי סינון</button>`:''}
+    <span class="spacer"></span>
+    ${S.dl?`<button class="btn" data-act="export">ייצוא לאקסל</button>`:''}
+    ${ro?'':`<button class="btn primary" data-act="new-task">+ בקרה חדשה</button>`}
+  </div>`;
+}
+
+/* ---------- plan (table) ---------- */
+function groupsFor(list){
+  const by=S.groupBy, out=[];
+  if(by==='none')return [{key:'all',name:'כל הבקרות',color:'var(--accent)',items:list,extra:{}}];
+  if(by==='status')return ST.map(s=>({key:'st:'+s.k,name:s.l,color:`var(--st-${s.k})`,items:list.filter(t=>t.status===s.k),extra:{status:s.k}}));
+  const keyOf=t=>by==='domain'?(t.domain||'').trim():(t.spec||'').trim();
+  const order=by==='domain'?domains():ownersOf('spec');
+  order.forEach((k,i)=>out.push({key:by+':'+k,name:k,color:by==='domain'?domColor(k):GC[i%GC.length],items:list.filter(t=>keyOf(t)===k),extra:{[by]:k}}));
+  const rest=list.filter(t=>!keyOf(t));
+  if(rest.length||!out.length)out.push({key:by+':',name:by==='domain'?'ללא תחום':'ללא אחראי',color:'var(--faint)',items:rest,extra:{}});
+  return out;
+}
+function viewPlan(){
+  const ro=!S.canWrite, dis=ro?'disabled':'';
+  if(!S.tasks.length)return `<div class="empty"><h2>אין עדיין בקרות</h2><p>כל שורה כאן היא בקרה או רכיב במערכת, עם תחום, אחריות, סטטוס ויעד.</p>${ro?'':`<input class="search" style="max-width:420px" data-live data-add="" placeholder="שם הבקרה הראשונה ו‑Enter">`}</div>`;
+  const list=filteredTasks(), filtering=!!(S.q||S.fDomain||S.fOwner||S.fSched);
+  let h='<div class="plan" style="display:flex;flex-direction:column;gap:18px">';
+  const gs=groupsFor(list).filter(g=>g.items.length||!filtering);
+  if(!gs.length)h+=`<div class="empty"><h2>אין בקרות שמתאימות לסינון</h2><p>נסה לשנות את החיפוש או לנקות את הסינון.</p></div>`;
+  gs.forEach(g=>{
+    const ts=[...g.items].sort((a,b)=>(a.num||0)-(b.num||0)), open=!S.collapsed[g.key], gp=Math.round(weighted(ts));
+    const extra=esc(JSON.stringify(g.extra));
+    h+=`<section class="group" style="--gc:${g.color}">
+      <div class="ghead">
+        <button class="gtoggle" data-toggle="${esc(g.key)}" aria-expanded="${open}" aria-label="הצג או הסתר את ${esc(g.name)}">▼</button>
+        <span class="gname">${esc(g.name)}</span>
+        <span class="gmeta num">${ts.length} בקרות</span>
+        ${ts.length?`<span class="gbar" data-tip="התקדמות משוקללת ${gp}%"><span style="width:${gp}%"></span></span><span class="gmeta num">${gp}%</span>`:''}
+      </div>`;
+    if(open){
+      h+=`<div class="tablebox"><table><thead><tr>
+        <th>#</th><th class="start" style="width:30%">בקרה / רכיב</th>${S.groupBy==='domain'?'':'<th style="width:110px">תחום</th>'}<th style="width:180px">אחריות אפיון</th><th>אחריות פיתוח</th><th style="width:96px">עדיפות</th><th style="width:60px">משקל</th><th style="width:118px">סטטוס</th><th style="width:130px">התקדמות</th><th style="width:140px">תאריך יעד</th><th style="width:40px"></th>
+      </tr></thead><tbody>`;
+      ts.forEach(t=>{
+        const ni=issuesFor(t.id).filter(i=>i.status!=='closed').length;
+        h+=`<tr>
+          <td class="idx num">${esc(t.num)}</td>
+          <td class="start"><div class="trow"><input class="cell-in" data-live data-tf="title" data-id="${t.id}" value="${esc(t.title)}" aria-label="שם הבקרה" ${dis}>
+            <button class="open" data-open="task:${t.id}" ${t.notes?`data-tip="${esc(t.notes)}"`:''}>${t.notes?'<span class="note-dot"></span>':''}${ni?`<span class="n num" title="סוגיות פתוחות">${ni}</span>`:''}פרטים</button></div></td>
+          ${S.groupBy==='domain'?'':`<td><input class="cell-in" style="text-align:center" list="dl-domains" data-live data-tf="domain" data-id="${t.id}" value="${esc(t.domain)}" placeholder="—" aria-label="תחום" ${dis}></td>`}
+          <td><div class="owner"><input class="cell-in" list="dl-owners" data-live data-tf="spec" data-id="${t.id}" value="${esc(t.spec)}" placeholder="—" aria-label="אחריות אפיון" ${dis}>${ro?'':`<button class="ico" data-transfer="${t.id}" aria-label="העבר לאחראי אחר" data-tip="העבר לאחראי אחר">${ICON_MOVE}</button>`}${ownerOf(t)?`<a class="ico" href="${esc(mailtoFor(t,'reminder'))}" aria-label="שלח מייל ל${esc(personName(ownerOf(t)))}" data-tip="שלח מייל ל${esc(personName(ownerOf(t)))}">${ICON_MAIL}</a>`:''}</div></td>
+          <td><input class="cell-in" style="text-align:center" list="dl-owners" data-live data-tf="dev" data-id="${t.id}" value="${esc(t.dev)}" placeholder="—" aria-label="אחריות פיתוח" ${dis}></td>
+          <td class="pc"><button class="pill p-${t.priority||'mid'}" data-pick="priority" data-id="${t.id}" ${dis}>${PL[t.priority||'mid']}</button></td>
+          <td><select class="wsel num" data-tf="weight" data-id="${t.id}" aria-label="משקל" ${dis}>${[1,2,3,4,5].map(w=>`<option ${Number(t.weight)===w?'selected':''}>${w}</option>`).join('')}</select></td>
+          <td class="pc"><button class="pill s-${t.status}" data-pick="status" data-id="${t.id}" ${dis}>${SL[t.status]||'—'}</button></td>
+          <td><div class="prog"><span class="track"><span class="s-${t.status}" style="width:${pct(t)}%"></span></span><b class="num">${pct(t)}%</b></div></td>
+          <td><div class="due"><input type="date" class="date-in num" data-tf="due" data-id="${t.id}" value="${esc(t.due)}" aria-label="תאריך יעד" ${dis}>${schedChip(t)}</div></td>
+          <td>${ro?'':`<button class="del" data-del="${t.id}" aria-label="מחק בקרה">✕</button>`}</td></tr>`;
+      });
+      if(!ro)h+=`<tr class="addrow"><td></td><td colspan="10"><input class="add-in" data-live data-add="${extra}" placeholder="+ הוסף בקרה ולחץ Enter" aria-label="בקרה חדשה"></td></tr>`;
+      h+=`</tbody></table></div><div class="cards">`;
+      ts.forEach(t=>{
+        h+=`<button class="card" data-open="task:${t.id}"><span class="dom" style="--gc:${domColor(t.domain)}">${esc(t.domain)||'ללא תחום'} · #${esc(t.num)}</span><span class="ct">${esc(t.title)||'ללא שם'}</span>
+          <span class="meta"><span class="chip solid s-${t.status}">${SL[t.status]}</span>${t.spec?`<span>אפיון: ${esc(t.spec)}</span>`:''}${schedChip(t)}${t.notes?'<span class="note-dot"></span>':''}</span></button>`;
+      });
+      if(!ro)h+=`<div class="add-card"><input data-live data-add="${extra}" placeholder="+ הוסף בקרה" aria-label="בקרה חדשה" enterkeyhint="done"></div>`;
+      h+=`</div>`;
+    }
+    h+=`</section>`;
+  });
+  return h+'</div>';
+}
+
+/* ---------- kanban ---------- */
+function viewKanban(){
+  const ro=!S.canWrite, list=filteredTasks();
+  let h=`<div class="kanban">`;
+  ST.forEach(s=>{
+    const ts=list.filter(t=>t.status===s.k).sort((a,b)=>{const o={late:0,soon:1,plan:2,none:3,done:4};return (o[sched(a)]-o[sched(b)])||((a.due||'9').localeCompare(b.due||'9'))||((a.num||0)-(b.num||0))});
+    h+=`<div class="col" data-col="${s.k}"><h3 class="s-${s.k}">${s.l}<small class="num">${ts.length} · ${s.p}%</small></h3><div class="list">`;
+    ts.forEach(t=>{
+      const ni=issuesFor(t.id).filter(i=>i.status!=='closed').length, sc=sched(t);
+      h+=`<div class="kcard" draggable="${!ro}" data-drag="${t.id}" data-open="task:${t.id}" tabindex="0" role="button" aria-label="${esc(t.title)}">
+        <span class="top"><span class="dom" style="--gc:${domColor(t.domain)}">${esc(t.domain)||'ללא תחום'}</span><span class="hash num">#${esc(t.num)}</span></span>
+        <span class="ct">${esc(t.title)||'ללא שם'}</span>
+        ${t.notes?`<span class="note">${esc(t.notes)}</span>`:''}
+        <span class="meta">${t.spec?`<span>אפיון: ${esc(t.spec)}</span>`:''}${t.priority==='high'?`<span class="chip solid p-high">עדיפות גבוהה</span>`:''}${sc!=='none'?schedChip(t):''}${ni?`<span class="chip sc-late num">${ni} סוגיות</span>`:''}</span>
+      </div>`;
+    });
+    if(!ro)h+=`<input class="kadd" data-live data-add='${esc(JSON.stringify({status:s.k}))}' placeholder="+ הוסף בקרה" aria-label="בקרה חדשה ב${s.l}">`;
+    h+=`</div></div>`;
+  });
+  return h+`</div>`;
+}
+
+/* ---------- dashboard ---------- */
+function viewDash(){
+  const T=S.tasks, n=T.length, prog=weighted(T), wsum=T.reduce((a,t)=>a+(Number(t.weight)||0),0);
+  const cnt=Object.fromEntries(ST.map(s=>[s.k,T.filter(t=>t.status===s.k).length]));
+  const late=T.filter(t=>sched(t)==='late'), soon=T.filter(t=>sched(t)==='soon');
+  const oi=openIssues();
+  const legend=`<div class="legend">${ST.map(s=>`<span><i class="sw s-${s.k}"></i>${s.l}</span>`).join('')}</div>`;
+  let h=`<div class="dash">
+  <section class="panel span-5 hero">
+    <h2>התקדמות משוקללת<small>לפי משקל וסטטוס, כמו באקסל</small></h2>
+    <div class="big num">${Math.round(prog)}<small>%</small></div>
+    <div class="hbar" data-tip="${prog.toFixed(1)}% מתוך משקל כולל ${wsum}"><span style="width:${prog}%"></span></div>
+    <div class="cap num">${n} בקרות · משקל כולל ${wsum} · ממתין לנו 10% · ספק פיתוח 50% · בבדיקות 85% · הושלם 100%</div>
+  </section>
+  <section class="panel span-7">
+    <h2>מצב הבקרות</h2>
+    <div class="tiles">${ST.map(s=>`<button class="tile" data-goto="kanban"><span class="k"><i class="sw s-${s.k}"></i>${s.l}</span><span class="v num">${cnt[s.k]}</span></button>`).join('')}
+      <button class="tile ${late.length?'alert':''}" data-goto="plan" data-sched="late"><span class="k">באיחור</span><span class="v num">${late.length}</span></button>
+      <button class="tile ${soon.length?'warn':''}" data-goto="plan" data-sched="soon"><span class="k">קרוב ליעד (7 ימים)</span><span class="v num">${soon.length}</span></button>
+      <button class="tile" data-goto="issues"><span class="k">סוגיות פתוחות</span><span class="v num">${oi.length}</span></button>
+      <button class="tile" data-goto="changes"><span class="k">בקשות שינוי</span><span class="v num">${S.changes.length}</span></button>
+    </div>
+  </section>
+  <section class="panel span-12">
+    <h2>התפלגות סטטוסים<small class="num">${n} בקרות</small></h2>
+    <div class="stack">${n?ST.filter(s=>cnt[s.k]).map(s=>`<span class="s-${s.k} num" style="flex:${cnt[s.k]}" data-tip="${s.l}: ${cnt[s.k]} (${Math.round(cnt[s.k]/n*100)}%)">${cnt[s.k]/n>.06?`${s.l} ${cnt[s.k]}`:cnt[s.k]}</span>`).join(''):''}</div>
+    ${legend}
+  </section>`;
+  // by domain
+  const doms=domains().map(d=>{const ts=T.filter(t=>t.domain===d);return {d,n:ts.length,p:weighted(ts),w:ts.reduce((a,t)=>a+(Number(t.weight)||0),0)}}).sort((a,b)=>b.p-a.p||b.w-a.w);
+  h+=`<section class="panel span-7"><h2>התקדמות לפי תחום<small>משוקללת</small></h2><div class="hrows">${doms.map(x=>`
+    <div class="hrow" data-tip="${esc(x.d)}: ${x.n} בקרות, משקל ${x.w}, התקדמות ${x.p.toFixed(0)}%"><span class="lbl">${esc(x.d)}<small class="num">${x.n}</small></span><span class="track"><span style="width:${x.p}%;background:var(--accent);border-radius:999px"></span></span><span class="val num">${Math.round(x.p)}%</span></div>`).join('')||'<div class="none">אין עדיין תחומים</div>'}</div></section>`;
+  // by spec owner
+  const own=ownersOf('spec').map(o=>{const ts=T.filter(t=>(t.spec||'').trim()===o);return {o,ts}}).sort((a,b)=>b.ts.length-a.ts.length);
+  const mx=Math.max(1,...own.map(x=>x.ts.length));
+  h+=`<section class="panel span-5"><h2>עומס לפי אחריות אפיון</h2>${legend}<div class="hrows">${own.map(x=>`
+    <div class="hrow"><span class="lbl">${esc(x.o)}</span><span class="track" style="background:transparent">${ST.map(s=>{const c=x.ts.filter(t=>t.status===s.k).length;return c?`<span class="s-${s.k}" style="width:${c/mx*100}%;border-radius:3px" data-tip="${esc(x.o)} · ${s.l}: ${c}"></span>`:''}).join('')}</span><span class="val num">${x.ts.length}</span></div>`).join('')||'<div class="none">אין עדיין אחראים</div>'}</div></section>`;
+  // attention
+  const dueList=[...late,...soon,...T.filter(t=>sched(t)==='plan')].sort((a,b)=>a.due.localeCompare(b.due)).slice(0,8);
+  h+=`<section class="panel span-6"><h2>יעדים קרובים</h2><div class="ilist">${dueList.map(t=>`<button class="irow" data-open="task:${t.id}"><span class="t"><span>${esc(t.title)}</span><small>${esc(t.domain)} · ${esc(t.spec)||'ללא אחראי'} · ${fmtDate(t.due)}</small></span>${schedChip(t)}</button>`).join('')||'<div class="none">לאף בקרה עוד לא נקבע תאריך יעד.</div>'}</div></section>`;
+  const notes=T.filter(t=>t.notes&&t.status!=='done');
+  const sevO={critical:0,high:1,mid:2,low:3,'':4};
+  const att=[...oi.sort((a,b)=>sevO[a.severity||'']-sevO[b.severity||'']).map(i=>`<button class="irow" data-open="issue:${i.id}"><span class="t"><span>${esc(i.subject)||'ללא נושא'}</span><small>${esc(i.code)} · סוגיה ${i.task&&taskById(i.task)?'· '+esc(taskById(i.task).title):''}</small></span>${i.severity?`<span class="chip sev-${i.severity}">${SEVL[i.severity]}</span>`:`<span class="chip ist-${i.status}">${ISTL[i.status]}</span>`}</button>`),
+    ...notes.map(t=>`<button class="irow" data-open="task:${t.id}"><span class="t"><span>${esc(t.notes)}</span><small>חסם / הערה · ${esc(t.title)}</small></span><span class="note-dot"></span></button>`)];
+  h+=`<section class="panel span-6"><h2>חסמים וסוגיות פתוחות<small class="num">${att.length}</small></h2><div class="ilist">${att.slice(0,10).join('')||'<div class="none">אין חסמים או סוגיות פתוחות.</div>'}</div>${att.length>10?`<button class="btn ghost" data-goto="issues">לכל הסוגיות</button>`:''}</section>`;
+  return h+`</div>`;
+}
+
+/* ---------- issues ---------- */
+function viewIssues(){
+  const ro=!S.canWrite;
+  const list=S.issues.filter(i=>S.showClosed||i.status!=='closed').sort((a,b)=>String(a.code).localeCompare(String(b.code)));
+  const closedN=S.issues.filter(i=>i.status==='closed').length;
+  let h=`<div class="tools"><span class="sub">כל חסם, החלטה או תקלה נרשמים כאן ומקושרים לבקרה.</span><span class="spacer"></span>
+    ${closedN?`<label class="sub" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="show-closed" ${S.showClosed?'checked':''}> הצג סגורות (${closedN})</label>`:''}
+    ${ro?'':`<button class="btn primary" data-act="new-issue">+ סוגיה חדשה</button>`}</div>`;
+  if(!list.length)return h+`<div class="empty"><h2>אין סוגיות פתוחות</h2><p>סוגיה היא כל דבר שצריך החלטה או טיפול: חסם מול הספק, שאלת אפיון פתוחה או תקלה שנמצאה בבדיקות.</p></div>`;
+  h+=`<div class="tablebox list" style="--gc:var(--accent)"><table><thead><tr><th class="start">ID</th><th class="start" style="width:38%">נושא</th><th>סוג</th><th class="start">קשור לבקרה</th><th>חומרה</th><th>אחראי</th><th>יעד</th><th>סטטוס</th><th>ימים פתוחים</th></tr></thead><tbody>`;
+  list.forEach(i=>{
+    const t=taskById(i.task), days=i.opened&&i.status!=='closed'?dayDiff(todayStr(),i.opened):'';
+    h+=`<tr class="${i.status==='closed'?'closed':''}" data-open="issue:${i.id}" tabindex="0">
+      <td class="code num">${esc(i.code)}</td>
+      <td><div class="subj">${esc(i.subject)||'ללא נושא'}</div>${i.description?`<div class="desc">${esc(i.description)}</div>`:''}</td>
+      <td class="c">${esc(i.type)||'—'}</td>
+      <td>${t?esc(t.title):'<span style="color:var(--faint)">—</span>'}</td>
+      <td class="c">${i.severity?`<span class="chip sev-${i.severity}">${SEVL[i.severity]}</span>`:'—'}</td>
+      <td class="c">${esc(i.owner)||'—'}</td>
+      <td class="c num">${fmtDate(i.due)||'—'}</td>
+      <td class="c"><span class="chip ist-${i.status}">${ISTL[i.status]||i.status}</span></td>
+      <td class="c num">${days===''?'—':days}</td></tr>`;
+  });
+  return h+`</tbody></table></div>`;
+}
+
+/* ---------- change log ---------- */
+function viewChanges(){
+  const ro=!S.canWrite, list=[...S.changes].sort((a,b)=>String(a.code).localeCompare(String(b.code)));
+  let h=`<div class="tools"><span class="sub">כל שינוי שמתבקש אחרי אישור אפיון נרשם כאן, עם ההשפעה על הלו״ז והעלות.</span><span class="spacer"></span>${ro?'':`<button class="btn primary" data-act="new-change">+ בקשת שינוי</button>`}</div>`;
+  if(!list.length)return h+`<div class="empty"><h2>עדיין אין בקשות שינוי</h2><p>כשמישהו מבקש לשנות בקרה שכבר אופיינה ואושרה, פותחים כאן בקשה (CR) כדי לתעד מי ביקש, למה, ומה ההשפעה על הספק.</p></div>`;
+  h+=`<div class="tablebox list" style="--gc:var(--accent)"><table><thead><tr><th class="start">CR</th><th>תאריך</th><th>מבקש</th><th class="start">בקרה / רכיב</th><th class="start" style="width:30%">תיאור השינוי</th><th>השפעה על לו״ז</th><th>השפעה על עלות</th><th>אישור</th><th>סטטוס</th></tr></thead><tbody>`;
+  list.forEach(c=>{const t=taskById(c.task);
+    h+=`<tr class="${c.status==='נסגר'?'closed':''}" data-open="change:${c.id}" tabindex="0"><td class="code num">${esc(c.code)}</td><td class="c num">${fmtDate(c.date)||'—'}</td><td class="c">${esc(c.requester)||'—'}</td><td>${t?esc(t.title):'—'}</td>
+      <td><div class="subj">${esc(c.description)||'ללא תיאור'}</div>${c.reason?`<div class="desc">${esc(c.reason)}</div>`:''}</td><td class="c">${esc(c.scheduleImpact)||'—'}</td><td class="c">${esc(c.costImpact)||'—'}</td>
+      <td class="c"><span class="chip ${c.approval==='אושר'?'sc-done':c.approval==='נדחה'?'sc-late':'sc-soon'}">${esc(c.approval)}</span></td><td class="c">${esc(c.status)}</td></tr>`});
+  return h+`</tbody></table></div>`;
+}
+
+/* ---------- drawer ---------- */
+const taskOpts=()=>[{v:'',l:'—'},...[...S.tasks].sort((a,b)=>(a.num||0)-(b.num||0)).map(t=>({v:t.id,l:`#${t.num} ${t.title}`}))];
+const FIELDS={
+  task:[{k:'title',l:'בקרה / רכיב',w:1},{k:'domain',l:'תחום',list:'dl-domains'},{k:'status',l:'סטטוס',sel:ST.map(s=>({v:s.k,l:s.l}))},
+    {k:'spec',l:'אחריות אפיון',list:'dl-owners'},{k:'dev',l:'אחריות פיתוח',list:'dl-owners'},{k:'priority',l:'עדיפות',sel:PR.map(p=>({v:p.k,l:p.l}))},
+    {k:'weight',l:'משקל',sel:[1,2,3,4,5].map(n=>({v:String(n),l:String(n)}))},{k:'due',l:'תאריך יעד',type:'date'},{k:'num',l:'מספר',type:'number'},
+    {k:'notes',l:'חסם / הערה',area:1,w:1,ph:'מה תקוע, למי לחזור, מה הוחלט…'}],
+  issue:[{k:'subject',l:'נושא',w:1},{k:'type',l:'סוג',sel:ITYPE.map(x=>({v:x,l:x||'—'}))},{k:'severity',l:'חומרה',sel:SEV.map(s=>({v:s.k,l:s.l}))},
+    {k:'status',l:'סטטוס',sel:IST.map(s=>({v:s.k,l:s.l}))},{k:'owner',l:'אחראי',list:'dl-owners'},{k:'opened',l:'תאריך פתיחה',type:'date'},{k:'due',l:'תאריך יעד',type:'date'},
+    {k:'task',l:'קשור לבקרה',sel:'tasks',w:1},{k:'description',l:'תיאור / החלטה נדרשת',area:1,w:1},{k:'resolution',l:'החלטה / פתרון',area:1,w:1}],
+  change:[{k:'description',l:'תיאור השינוי',area:1,w:1},{k:'date',l:'תאריך',type:'date'},{k:'requester',l:'מבקש',list:'dl-owners'},{k:'task',l:'בקרה / רכיב',sel:'tasks',w:1},
+    {k:'reason',l:'סיבת השינוי',area:1,w:1},{k:'scheduleImpact',l:'השפעה על לו״ז'},{k:'costImpact',l:'השפעה על עלות'},
+    {k:'approval',l:'אישור',sel:CR_APPROVAL.map(x=>({v:x,l:x}))},{k:'status',l:'סטטוס',sel:CR_STATUS.map(x=>({v:x,l:x}))},{k:'notes',l:'הערות',area:1,w:1}]
+};
+const COL={task:'tasks',issue:'issues',change:'changes'};
+function fieldHTML(f,rec,dis){
+  const v=rec[f.k]??'', id='f-'+f.k;
+  let ctl;
+  if(f.area)ctl=`<textarea id="${id}" data-df="${f.k}" placeholder="${esc(f.ph||'')}" ${dis}>${esc(v)}</textarea>`;
+  else if(f.sel){const opts=f.sel==='tasks'?taskOpts():f.sel;ctl=`<select id="${id}" data-df="${f.k}" ${dis}>${opts.map(o=>`<option value="${esc(o.v)}" ${String(v)===String(o.v)?'selected':''}>${esc(o.l)}</option>`).join('')}</select>`}
+  else ctl=`<input id="${id}" data-df="${f.k}" type="${f.type||'text'}" ${f.list?`list="${f.list}"`:''} value="${esc(v)}" ${dis}>`;
+  return `<div class="field ${f.w?'wide':''}"><label for="${id}">${f.l}</label>${ctl}</div>`;
+}
+function renderDrawer(){
+  const d=S.drawer; if(!d){layer.innerHTML='';return}
+  const list={task:S.tasks,issue:S.issues,change:S.changes}[d.kind], rec=list.find(x=>x.id===d.id);
+  if(!rec){if(!d.fresh){S.drawer=null;layer.innerHTML=''}return}
+  if(layer.querySelector('.drawer')&&(PTR||(layer.contains(document.activeElement)&&document.activeElement.matches('input,textarea,select')))){S.drawerPending=true;return}
+  const ro=!S.canWrite, dis=ro?'disabled':'';
+  const title=d.kind==='task'&&d.id===S.newTaskId?'בקרה חדשה':{task:'פרטי בקרה',issue:'סוגיה',change:'בקשת שינוי'}[d.kind];
+  const code=d.kind==='task'?`#${rec.num??''}`:rec.code;
+  let body=`<div class="fgrid">${FIELDS[d.kind].map(f=>fieldHTML(f,rec,dis)).join('')}</div>`;
+  if(d.kind==='task'){
+    body+=`<div class="dsec"><div class="sub num">התקדמות ${pct(rec)}% · מצב לו״ז: ${schedChip(rec)}</div></div>`;
+    const ow=ownerOf(rec), hist=Array.isArray(rec.history)?[...rec.history].reverse():[];
+    body+=`<div class="dsec"><h3>אחריות והעברות</h3>
+      <div class="ownerline">${ro?'':`<button class="btn" data-transfer="${rec.id}">${ICON_MOVE} העבר לאחראי אחר</button>`}
+        ${ow?`<a class="btn" href="${esc(mailtoFor(rec,'reminder'))}">${ICON_MAIL} שלח מייל ל${esc(personName(ow))}</a>`:`<span class="sub">${rec.spec?`ל"${esc(rec.spec)}" אין מייל במערכת`:'אין אחראי'}</span>`}</div>
+      ${hist.length?`<div class="hist">${hist.map(h=>`<div class="h"><span class="t"><span>${esc(h.from||'ללא אחראי')} ← <b>${esc(h.to)}</b></span><small class="num">${new Date(h.at).toLocaleString('he-IL',{dateStyle:'short',timeStyle:'short'})} · ${esc(personName(teamByEmail(h.by))||String(h.by||'').split('@')[0])}${h.note?' · '+esc(h.note):''}</small></span></div>`).join('')}</div>`:''}
+    </div>`;
+    const iss=issuesFor(rec.id);
+    body+=`<div class="dsec"><h3>סוגיות קשורות${ro?'':`<button class="btn ghost" data-act="new-issue-for" data-id="${rec.id}">+ סוגיה לבקרה זו</button>`}</h3>
+      <div class="ilist">${iss.map(i=>`<button class="irow" data-open="issue:${i.id}"><span class="t"><span>${esc(i.subject)||'ללא נושא'}</span><small>${esc(i.code)}</small></span><span class="chip ist-${i.status}">${ISTL[i.status]}</span></button>`).join('')||'<div class="none">אין סוגיות לבקרה הזו.</div>'}</div></div>`;
+  }
+  if(d.kind==='issue'&&rec.opened&&rec.status!=='closed')body+=`<div class="sub num">פתוחה ${dayDiff(todayStr(),rec.opened)} ימים</div>`;
+  const who=rec.updatedBy?(S.names[rec.updatedBy]||''):'';
+  if(rec.updatedBy&&!(rec.updatedBy in S.names))resolveNames([rec.updatedBy]);
+  layer.innerHTML=`<div class="scrim" data-close></div>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-label="${title}">
+    <div class="dh"><strong>${title}</strong><span class="code num">${esc(code)}</span><button class="x" data-close aria-label="סגור">✕</button></div>
+    <div class="dbody">${body}</div>
+    <div class="dfoot"><span class="num">${rec.updated?`עודכן ${new Date(rec.updated).toLocaleString('he-IL',{dateStyle:'short',timeStyle:'short'})}${who?' · '+esc(who):''}`:''}</span>
+      ${ro?'':`<button class="btn ghost" style="color:var(--danger)" data-act="del-rec">מחק</button>`}</div>
+  </aside>`;
+  if(d.fresh){d.fresh=false;const f=layer.querySelector('[data-df]');f&&f.focus()}
+}
+function closeDrawer(){
+  const d=S.drawer, titleVal=(layer.querySelector('#f-title')?.value||'').trim();
+  S.drawer=null;layer.innerHTML='';
+  if(d&&d.kind==='task'&&d.id===S.newTaskId){S.newTaskId=null;if(!titleVal)write(()=>S.db.doc('tasks/'+d.id).delete());else toast('הבקרה נוספה')}
+}
+layer.addEventListener('click',e=>{
+  if(e.target.closest('[data-close]')){closeDrawer();return}
+  const o=e.target.closest('[data-open]'); if(o){const [kind,id]=o.dataset.open.split(':');S.drawer={kind,id};renderDrawer();return}
+  const tr=e.target.closest('[data-transfer]'); if(tr){e.stopPropagation();openTransfer(tr,tr.dataset.transfer);return}
+  const a=e.target.closest('[data-act]'); if(!a)return;
+  if(a.dataset.act==='new-issue-for')addIssue(a.dataset.id);
+  if(a.dataset.act==='del-rec'){
+    if(!a.dataset.arm){a.dataset.arm='1';a.textContent='לחץ שוב כדי למחוק';setTimeout(()=>{if(a.isConnected){delete a.dataset.arm;a.textContent='מחק'}},3500);return}
+    const {kind,id}=S.drawer; write(()=>S.db.doc(COL[kind]+'/'+id).delete(),'נמחק');closeDrawer();
+  }
+});
+layer.addEventListener('change',e=>{
+  const el=e.target.closest('[data-df]'); if(!el||!S.drawer)return;
+  let v=el.tagName==='TEXTAREA'?el.value:el.value.trim();
+  if(el.dataset.df==='weight'||el.dataset.df==='num')v=Number(v)||0;
+  const extra=S.drawer.kind==='task'&&el.dataset.df==='spec'?{specEmail:teamByName(v)?.email||''}:{};
+  upd(COL[S.drawer.kind],S.drawer.id,{[el.dataset.df]:v,...extra});
+});
+layer.addEventListener('focusout',()=>setTimeout(()=>{if(S.drawer&&S.drawerPending&&!PTR&&!layer.contains(document.activeElement)){S.drawerPending=false;renderDrawer()}},0));
+
+function resolveNames(ids){ids.forEach(id=>{S.names[id]=String(id||'').split('@')[0]})}
+
+/* ---------- popovers & tooltips ---------- */
+function closeMenu(){document.querySelector('.menu')?.remove()}
+function place(menu,anchor){
+  document.body.appendChild(menu);
+  const r=anchor.getBoundingClientRect(), mw=menu.offsetWidth, mh=menu.offsetHeight;
+  let left=r.left+r.width/2-mw/2; left=Math.max(8,Math.min(left,innerWidth-mw-8));
+  let top=r.bottom+4; if(top+mh>innerHeight-8)top=Math.max(8,r.top-mh-4);
+  menu.style.left=left+'px';menu.style.top=top+'px';
+  (menu.querySelector('[aria-current="true"]')||menu.querySelector('button'))?.focus();
+}
+function openPicker(anchor,kind,id){
+  closeMenu();const t=taskById(id);if(!t)return;
+  const m=document.createElement('div');m.className='menu';m.setAttribute('role','menu');
+  const opts=kind==='status'?ST.map(s=>({k:s.k,l:s.l,c:'s-'+s.k})):PR.map(p=>({k:p.k,l:p.l,c:'p-'+p.k}));
+  m.innerHTML=opts.map(o=>`<button role="menuitem" data-v="${o.k}" class="${o.c}" aria-current="${t[kind]===o.k}">${o.l}</button>`).join('');
+  m.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(t[kind]!==b.dataset.v)upd('tasks',id,{[kind]:b.dataset.v});closeMenu()});
+  place(m,anchor);
+}
+let tipEl=null;
+document.addEventListener('pointerover',e=>{
+  const el=e.target.closest('[data-tip]');
+  if(!el){tipEl?.remove();tipEl=null;return}
+  if(!tipEl){tipEl=document.createElement('div');tipEl.className='tip';document.body.appendChild(tipEl)}
+  tipEl.textContent=el.dataset.tip;
+  const r=el.getBoundingClientRect(), tw=tipEl.offsetWidth, th=tipEl.offsetHeight;
+  tipEl.style.left=Math.max(8,Math.min(r.left+r.width/2-tw/2,innerWidth-tw-8))+'px';
+  tipEl.style.top=(r.top-th-6<8?r.bottom+6:r.top-th-6)+'px';
+});
+document.addEventListener('scroll',()=>{tipEl?.remove();tipEl=null},true);
+
+/* ---------- app events (delegated) ---------- */
+document.addEventListener('click',e=>{if(!e.target.closest('.menu')&&!e.target.closest('[data-pick]')&&!e.target.closest('[data-transfer]'))closeMenu()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeMenu();if(S.drawer)closeDrawer()}});
+app.addEventListener('click',e=>{
+  const tab=e.target.closest('[data-tab]'); if(tab){S.tab=tab.dataset.tab;saveUI();render();return}
+  const go=e.target.closest('[data-goto]'); if(go){S.tab=go.dataset.goto;if(go.dataset.sched){S.fSched=go.dataset.sched;S.groupBy=S.groupBy}saveUI();render();scrollTo({top:0});return}
+  const pick=e.target.closest('[data-pick]'); if(pick){e.stopPropagation();openPicker(pick,pick.dataset.pick,pick.dataset.id);return}
+  const tr=e.target.closest('[data-transfer]'); if(tr){e.stopPropagation();openTransfer(tr,tr.dataset.transfer);return}
+  if(e.target.closest('a[href^="mailto:"]'))return;
+  const tg=e.target.closest('[data-toggle]'); if(tg){const k=tg.dataset.toggle;S.collapsed[k]=!S.collapsed[k];saveUI();render();return}
+  const udel=e.target.closest('[data-udel]');
+  if(udel){
+    if(udel.classList.contains('arm'))adminRemove(udel.dataset.udel);
+    else{udel.classList.add('arm');udel.textContent='להסיר?';setTimeout(()=>{if(udel.isConnected){udel.classList.remove('arm');udel.textContent='✕'}},3000)}
+    return;
+  }
+  const del=e.target.closest('[data-del]');
+  if(del){
+    if(del.classList.contains('arm')){write(()=>S.db.doc('tasks/'+del.dataset.del).delete(),'הבקרה נמחקה')}
+    else{del.classList.add('arm');del.textContent='מחק?';setTimeout(()=>{if(del.isConnected){del.classList.remove('arm');del.textContent='✕'}},3000)}
+    return;
+  }
+  const act=e.target.closest('[data-act]');
+  if(act){const a=act.dataset.act;
+    if(a==='clear'){S.q='';S.fDomain='';S.fOwner='';S.fSched='';render()}
+    if(a==='new-issue')addIssue();
+    if(a==='new-task')newTask();
+    if(a==='copy-url'){const u=boardUrl();(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>toast('הכתובת הועתקה'),()=>{const r=document.createRange();r.selectNodeContents(document.getElementById('board-url'));const sel=getSelection();sel.removeAllRanges();sel.addRange(r);toast('הכתובת מסומנת. העתק עם Ctrl+C')})}
+    if(a==='new-change')addChange();
+    if(a==='export')exportXlsx(act);
+    if(a==='logout')signOut();
+    return;
+  }
+  if(e.target.closest('input,select,textarea'))return;
+  const o=e.target.closest('[data-open]'); if(o){const [kind,id]=o.dataset.open.split(':');S.drawer={kind,id};renderDrawer()}
+});
+app.addEventListener('keydown',e=>{
+  const add=e.target.closest('[data-add]');
+  if(add&&e.key==='Enter'&&!e.isComposing){const v=add.value;add.value='';let extra={};try{extra=add.dataset.add?JSON.parse(add.dataset.add):{}}catch(x){}addTask(v,extra);return}
+  if(e.target.matches('input[data-tf],input[data-uname]')&&e.key==='Enter'){e.target.blur();return}
+  const o=e.target.closest('[data-open]');
+  if(o&&e.key==='Enter'&&!e.target.closest('input,select,textarea,button')){const [kind,id]=o.dataset.open.split(':');S.drawer={kind,id};renderDrawer()}
+});
+app.addEventListener('input',e=>{if(e.target.id==='q'){S.q=e.target.value;render()}});
+app.addEventListener('change',e=>{
+  const el=e.target;
+  if(el.id==='board-name'){const name=el.value.trim()||'לוח ניהול פרויקט';write(()=>S.db.doc('meta/board').set({...S.board,name}));return}
+  if(el.id==='show-closed'){S.showClosed=el.checked;render();return}
+  if(el.dataset.uname!==undefined){adminRename(el.dataset.uname,el.value.trim());return}
+  if(el.dataset.uadmin!==undefined){adminSetAdmin(el.dataset.uadmin,el.checked);return}
+  if(el.dataset.filter){S[el.dataset.filter]=el.value;if(el.dataset.filter==='groupBy')saveUI();render();return}
+  if(el.dataset.tf){let v=el.value;if(el.dataset.tf==='weight')v=Number(v);else if(el.dataset.tf!=='due')v=v.trim();const extra=el.dataset.tf==='spec'?{specEmail:teamByName(v)?.email||''}:{};upd('tasks',el.dataset.id,{[el.dataset.tf]:v,...extra})}
+});
+// kanban drag & drop
+app.addEventListener('dragstart',e=>{const c=e.target.closest('[data-drag]');if(!c)return;e.dataTransfer.setData('text/plain',c.dataset.drag);e.dataTransfer.effectAllowed='move';c.classList.add('dragging')});
+app.addEventListener('dragend',e=>{e.target.closest?.('[data-drag]')?.classList.remove('dragging')});
+app.addEventListener('dragover',e=>{const col=e.target.closest('[data-col]');if(!col)return;e.preventDefault();app.querySelectorAll('.col.drop').forEach(c=>c!==col&&c.classList.remove('drop'));col.classList.add('drop')});
+app.addEventListener('dragleave',e=>{const col=e.target.closest('[data-col]');if(col&&!col.contains(e.relatedTarget))col.classList.remove('drop')});
+app.addEventListener('drop',e=>{const col=e.target.closest('[data-col]');if(!col)return;e.preventDefault();col.classList.remove('drop');const id=e.dataTransfer.getData('text/plain');const t=taskById(id);if(t&&t.status!==col.dataset.col)upd('tasks',id,{status:col.dataset.col})});
+
+/* ---------- export ---------- */
+function loadXLSX(){
+  if(window.XLSX)return Promise.resolve(window.XLSX);
+  return new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=()=>res(window.XLSX);s.onerror=rej;document.head.appendChild(s)});
+}
+async function exportXlsx(btn){
+  btn.disabled=true;const old=btn.textContent;btn.textContent='מכין קובץ…';
+  try{
+    const X=await loadXLSX();
+    const tt=id=>{const t=taskById(id);return t?t.title:''};
+    const mp=[['#','תחום','בקרה / רכיב','אחריות אפיון','אחריות פיתוח','עדיפות','משקל','סטטוס נוכחי','% התקדמות','תאריך יעד','מצב לו״ז','חסם / הערה']]
+      .concat([...S.tasks].sort((a,b)=>(a.num||0)-(b.num||0)).map(t=>[t.num,t.domain,t.title,t.spec,t.dev,PL[t.priority]||'',Number(t.weight)||0,SL[t.status]||'',pct(t)/100,t.due?new Date(t.due):'',SCHED[sched(t)],t.notes]));
+    const is=[['ID','סוג','נושא','קשור לבקרה','חומרה','תיאור / החלטה נדרשת','אחראי','תאריך פתיחה','תאריך יעד','סטטוס','החלטה / פתרון']]
+      .concat([...S.issues].sort((a,b)=>String(a.code).localeCompare(String(b.code))).map(i=>[i.code,i.type,i.subject,tt(i.task),SEVL[i.severity]==='—'?'':SEVL[i.severity],i.description,i.owner,i.opened?new Date(i.opened):'',i.due?new Date(i.due):'',ISTL[i.status],i.resolution]));
+    const cr=[['CR #','תאריך','מבקש','בקרה / רכיב','תיאור השינוי','סיבת השינוי','השפעה על לו״ז','השפעה על עלות','אישור','סטטוס','הערות']]
+      .concat([...S.changes].sort((a,b)=>String(a.code).localeCompare(String(b.code))).map(c=>[c.code,c.date?new Date(c.date):'',c.requester,tt(c.task),c.description,c.reason,c.scheduleImpact,c.costImpact,c.approval,c.status,c.notes]));
+    const wb=X.utils.book_new();wb.Workbook={Views:[{RTL:true}]};
+    [['Master Plan',mp,[6,12,44,14,12,10,8,12,11,12,12,36]],['Issues & Decisions',is,[10,12,34,30,10,50,12,12,12,10,40]],['Change Log',cr,[9,12,12,30,44,30,14,14,14,10,30]]].forEach(([name,rows,w])=>{
+      const ws=X.utils.aoa_to_sheet(rows,{cellDates:true,dateNF:'dd/mm/yyyy'});ws['!cols']=w.map(x=>({wch:x}));X.utils.book_append_sheet(wb,ws,name)});
+    const buf=X.write(wb,{type:'array',bookType:'xlsx'});
+    const url=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));const a=document.createElement('a');a.href=url;a.download=`Zviran_Project_Tracker_${todayStr()}.xlsx`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);
+  }catch(e){toast('לא הצלחתי להכין את הקובץ. נסה שוב.')}
+  finally{if(btn.isConnected){btn.disabled=false;btn.textContent=old}}
+}
+
+
+
+/* ---------- backend: Supabase (auth + Postgres + realtime) ----------
+   The board talks to a tiny document-store API (collection/doc/onSnapshot/set/update/delete).
+   Here it is implemented on Supabase: one table per collection, each row = {id, data jsonb}. */
+const CFG=window.BOARD_CONFIG||{};
+let SB=null;
+const TABLES=['tasks','issues','changes','meta'];
+
+function makeDb(){
+  const cache={}; TABLES.forEach(t=>cache[t]=new Map());
+  const listeners={}; TABLES.forEach(t=>listeners[t]=new Set());
+  const ready={};
+  const toDoc=(id,data)=>({id,exists:data!==undefined,data:()=>data});
+  const emit=t=>listeners[t].forEach(fn=>fn());
+  async function load(t){
+    if(ready[t])return ready[t];
+    ready[t]=(async()=>{
+      const {data,error}=await SB.from(t).select('id,data');
+      if(error)throw {code:'unavailable',message:error.message};
+      data.forEach(r=>cache[t].set(r.id,r.data));
+      SB.channel('rt-'+t).on('postgres_changes',{event:'*',schema:'public',table:t},p=>{
+        if(p.eventType==='DELETE'){cache[t].delete(p.old.id)}else{cache[t].set(p.new.id,p.new.data)}
+        emit(t);
+      }).subscribe();
+    })();
+    return ready[t];
+  }
+  const fail=e=>{const m=(e&&e.message)||'';throw {code:/row-level security|permission|JWT/i.test(m)?'invalid_argument':'unavailable',message:m}};
+  function doc(path){
+    const [t,id]=path.split('/');
+    return {id,path,
+      async set(data){const {error}=await SB.from(t).upsert({id,data});if(error)fail(error);cache[t].set(id,data);emit(t)},
+      async update(patch){const {error}=await SB.rpc('merge_doc',{tbl:t,doc_id:id,patch});if(error)fail(error);cache[t].set(id,{...(cache[t].get(id)||{}),...patch});emit(t)},
+      async delete(){const {error}=await SB.from(t).delete().eq('id',id);if(error)fail(error);cache[t].delete(id);emit(t)},
+      async get(){await load(t);return toDoc(id,cache[t].get(id))},
+      onSnapshot(next,err){
+        const fn=()=>next(toDoc(id,cache[t].get(id)));
+        listeners[t].add(fn);load(t).then(fn,e=>err&&err(e));
+        return()=>listeners[t].delete(fn);
+      }};
+  }
+  function collection(t){
+    return {path:t,
+      doc:id=>doc(t+'/'+(id||((crypto.randomUUID&&crypto.randomUUID())||Date.now().toString(36)+Math.random().toString(36).slice(2)).replace(/-/g,'').slice(0,20))),
+      async add(data){const d=collection(t).doc();await d.set(data);return d},
+      onSnapshot(next,err){
+        const fn=()=>{const docs=[...cache[t]].map(([id,d])=>toDoc(id,d));next({docs,size:docs.length,empty:!docs.length,docChanges:()=>[]})};
+        listeners[t].add(fn);load(t).then(fn,e=>err&&err(e));
+        return()=>listeners[t].delete(fn);
+      }};
+  }
+  return {doc,collection};
+}
+
+/* ---------- sign-in screens ---------- */
+function gateHTML(){
+  if(S.state==='config')return `<div class="empty"><h2>המערכת עוד לא מחוברת למסד נתונים</h2><p>יש למלא את הכתובת והמפתח של Supabase בקובץ config.js, לפי המדריך ב‑README.</p></div>`;
+  if(S.state==='loading')return `<div class="banner">טוען את הלוח…</div>`;
+  if(S.state==='denied')return `<div class="empty"><h2>אין לך עדיין גישה ללוח</h2><p>נכנסת בתור <b>${esc(S.uid)}</b>, אבל המייל הזה לא ברשימת המורשים. בקש ממנהל הלוח להוסיף אותך, ואז רענן את העמוד.</p><button class="btn" data-act="logout">התנתקות</button></div>`;
+  if(S.state==='sent')return `<div class="empty"><h2>שלחנו לך קישור כניסה</h2><p>בדוק את תיבת המייל של <b>${esc(S.loginEmail)}</b> ולחץ על הקישור. הוא יחזיר אותך לכאן מחובר. אם המייל לא הגיע תוך כמה דקות, בדוק בתיקיית הספאם.</p><button class="btn ghost" data-act="login-back">שליחה למייל אחר</button></div>`;
+  return `<form class="empty login" id="login-form" novalidate>
+    <h2>${esc(CFG.title||'לוח ניהול פרויקט')}</h2>
+    <p>הכנס את כתובת המייל שלך ונשלח לך קישור כניסה. אין צורך בסיסמה.</p>
+    <input class="search" id="login-email" type="email" autocomplete="email" placeholder="name@zviran.co.il" value="${esc(S.loginEmail||'')}" required style="max-width:340px;width:100%">
+    <button class="btn primary" type="submit" id="login-btn">שלחו לי קישור כניסה</button>
+    ${S.loginError?`<p style="color:var(--danger)">${esc(S.loginError)}</p>`:''}
+  </form>`;
+}
+app.addEventListener('submit',async e=>{
+  if(e.target.id==='adm-add'){e.preventDefault();adminAdd(e.target);return}
+  if(e.target.id!=='login-form')return;
+  e.preventDefault();
+  const email=document.getElementById('login-email').value.trim().toLowerCase();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){S.loginError='כתובת המייל לא תקינה.';S.loginEmail=email;render();return}
+  const btn=document.getElementById('login-btn');btn.disabled=true;btn.textContent='שולח…';
+  const {error}=await SB.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
+  S.loginEmail=email;
+  if(error){S.loginError=/rate|limit/i.test(error.message)?'נשלחו יותר מדי קישורים בזמן קצר. נסה שוב בעוד כמה דקות.':'שליחת הקישור נכשלה: '+error.message;render();return}
+  S.loginError='';S.state='sent';render();
+});
+app.addEventListener('click',e=>{if(e.target.closest('[data-act="login-back"]')){S.state='login';render()}});
+async function signOut(){try{await SB.auth.signOut()}catch(e){}location.reload()}
+
+/* ---------- boot ---------- */
+async function start(session){
+  S.uid=(session.user.email||'').toLowerCase();
+  const {data,error}=await SB.from('allowed_users').select('email').eq('email',S.uid).maybeSingle();
+  if(error||!data){S.state='denied';render();return}
+  await loadTeam();
+  S.db=makeDb();S.state='ok';S.dl=true;S.canWrite=true;render();
+  const err=e=>toast('אין חיבור למסד הנתונים. רענן את העמוד.');
+  const snap=(col,key,field)=>S.db.collection(col).onSnapshot(s=>{S[field]=s.docs.map(d=>({id:d.id,...d.data()}));S.loaded[key]=true;
+    if(key==='t'&&S.deepTask){try{localStorage.removeItem('zv-deep')}catch(x){}}
+    if(key==='t'&&S.deepTask&&taskById(S.deepTask)){S.drawer={kind:'task',id:S.deepTask};S.deepTask=null;try{history.replaceState(null,'',location.pathname)}catch(x){}}
+    schedule();if(S.drawer&&!layer.contains(document.activeElement))renderDrawer()},err);
+  snap('tasks','t','tasks');snap('issues','i','issues');snap('changes','c','changes');
+  S.db.doc('meta/board').onSnapshot(d=>{S.board=d.exists?{...d.data()}:{};schedule()},err);
+}
+(async()=>{
+  if(!CFG.supabaseUrl||!CFG.supabaseAnonKey||/YOUR_/.test(CFG.supabaseUrl+CFG.supabaseAnonKey)||!window.supabase){S.state='config';render();return}
+  SB=window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseAnonKey,{auth:{persistSession:true,detectSessionInUrl:true,flowType:'implicit'}});
+  const {data:{session}}=await SB.auth.getSession();
+  let started=false;
+  SB.auth.onAuthStateChange((ev,sess)=>{if(sess&&!started){started=true;start(sess)}});
+  if(session){started=true;start(session)}else if(!started){S.state='login';render()}
+})();
+
+</script>
+</body>
+</html>
